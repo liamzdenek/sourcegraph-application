@@ -7,8 +7,8 @@ We are in the initial planning and setup phase of the Cody Batch project. The pr
 1. **Project Structure Definition**: Establishing the Nx monorepo structure and package organization
 2. **Core Architecture Design**: Defining the system components and their interactions
 3. **Infrastructure Setup**: Creating the AWS CDK configuration for deployment
-4. **Initial Frontend Scaffold**: Setting up the React application with Tanstack Router
-5. **Initial Backend Scaffold**: Setting up the Express API for Lambda deployment
+4. **Initial Backend Scaffold**: Setting up the Express API for Lambda deployment
+5. **Initial Frontend Scaffold**: Setting up the React application with Vite and Tanstack Router
 
 ## Recent Changes
 
@@ -28,44 +28,56 @@ Based on feedback, we've made several important architectural adjustments:
 
 7. **Enhanced Result Persistence**: Added support for downloading patch files and viewing Claude message threads.
 
+8. **API Package Implementation**: Set up the Express API with ESM modules, implemented health check, repository listing, and job management endpoints.
+
+9. **Frontend with Vite**: Set up the frontend package with Vite instead of Webpack for better performance and developer experience.
+
 ## Next Steps
 
 ### Immediate Tasks (Next 1-2 Days)
 
-1. **Initialize Nx Workspace**:
-   - Set up the monorepo structure with appropriate packages
-   - Configure build and lint settings
-   - Set up TypeScript configuration
+1. **Initialize Nx Workspace**: ✅
+   - Set up the monorepo structure with appropriate packages ✅
+   - Configure build and lint settings ✅
+   - Set up TypeScript configuration ✅
 
-2. **Create Shared Package**:
+2. **Create Shared Package**: ✅
    - Define common types and interfaces
    - Set up utility functions
    - Create Zod schemas for validation
 
-3. **Set Up CDK Infrastructure**:
-   - Define DynamoDB tables
-   - Configure AWS Batch compute environment and job queue
-   - Set up API Gateway
-   - Create S3 bucket for frontend hosting with BucketDeployment
-   - Configure CloudFront distribution
+3. **Initialize GitHub Client Package**: ✅
+   - Set up GitHub API client
+   - Implement repository operations
+   - Create service account authentication
 
-4. **Initialize API Package**:
-   - Set up Express application
-   - Configure Lambda handler
-   - Create basic health check endpoint
-   - Set up job management endpoints
+4. **Initialize Claude Client Package**: ✅
+   - Set up Claude API client
+   - Develop prompt engineering
+   - Implement response parsing
 
-5. **Initialize Batch Job Package**:
+5. **Initialize API Package**: ✅
+   - Set up Express application ✅
+   - Configure Lambda handler ✅
+   - Create health check endpoint ✅
+   - Set up job management endpoints ✅
+   - Set up error handling and logging ✅
+
+6. **Initialize Batch Package**: ✅
+   - Set up package structure ✅
    - Create job processing framework
    - Set up GitHub API integration
    - Set up Claude API integration
-   - Implement basic job handling logic
 
-6. **Initialize Frontend Package**:
-   - Set up React application
+7. **Initialize Frontend Package**: ✅
+   - Set up React application with Vite ✅
    - Configure Tanstack Router
    - Create basic layout and navigation
-   - Implement job creation and monitoring interfaces
+
+8. **Initialize CDK Package**: ✅
+   - Set up package structure ✅
+   - Define AWS resources
+   - Configure deployment
 
 ### Short-Term Goals (Next Week)
 
@@ -84,10 +96,10 @@ Based on feedback, we've made several important architectural adjustments:
    - Claude message thread viewing
 
 3. **Enhance API Capabilities**:
-   - Job management endpoints
-   - Result retrieval
-   - Error handling
-   - Pagination and filtering
+   - Connect API to DynamoDB for persistent storage
+   - Implement AWS Batch job submission
+   - Add authentication and authorization
+   - Implement pagination and filtering
 
 4. **Deploy Initial Version**:
    - Set up AWS resources
@@ -138,6 +150,16 @@ Based on feedback, we've made several important architectural adjustments:
    - **Decision**: Using a service account with credentials passed as environment variables
    - **Rationale**: Simplifies authentication flow and aligns with real-world usage
    - **Considerations**: Need to manage credential security and rotation
+
+5. **Module System**:
+   - **Decision**: Using ESM modules for all packages
+   - **Rationale**: Modern JavaScript standard with better tree-shaking and import/export syntax
+   - **Considerations**: Need to include file extensions in import statements
+
+6. **Frontend Build Tool**:
+   - **Decision**: Using Vite instead of Webpack
+   - **Rationale**: Faster development experience, better performance, and simpler configuration
+   - **Considerations**: Need to ensure compatibility with other tools in the ecosystem
 
 ### Technical Considerations
 

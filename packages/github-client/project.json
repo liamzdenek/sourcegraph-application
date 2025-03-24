@@ -1,0 +1,21 @@
+{
+  "name": "github-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/github-client/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/github-client",
+        "main": "packages/github-client/src/index.ts",
+        "tsConfig": "packages/github-client/tsconfig.lib.json",
+        "assets": ["packages/github-client/*.md"],
+        "format": ["cjs"],
+        "generatePackageJson": true
+      }
+    }
+  }
+}

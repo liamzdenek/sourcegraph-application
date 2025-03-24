@@ -63,10 +63,19 @@ tmp/
 temp/
 .tmp/
 
+# Docker
+.dockerignore
+Dockerfile
+
 # Claude API key files
 .claude-key
 claude-key.json
 
-# GitHub OAuth credentials
-.github-oauth
-github-oauth.json
+# GitHub token files
+.github-token
+github-token.json
+
+# Memory bank
+memory-bank/
+vite.config.*.timestamp*
+vitest.config.*.timestamp*

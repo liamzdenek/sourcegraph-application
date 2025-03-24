@@ -1,0 +1,21 @@
+{
+  "name": "claude-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/claude-client/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/claude-client",
+        "main": "packages/claude-client/src/index.ts",
+        "tsConfig": "packages/claude-client/tsconfig.lib.json",
+        "assets": ["packages/claude-client/*.md"],
+        "format": ["cjs"],
+        "generatePackageJson": true
+      }
+    }
+  }
+}
