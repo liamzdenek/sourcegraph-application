@@ -1,7 +1,14 @@
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
 import { BatchClient, SubmitJobCommand } from '@aws-sdk/client-batch';
-import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { 
+  DynamoDBDocumentClient, 
+  PutCommand, 
+  GetCommand, 
+  QueryCommand, 
+  UpdateCommand,
+  ScanCommand
+} from '@aws-sdk/lib-dynamodb';
 
 const router = express.Router();
 
@@ -19,6 +26,11 @@ const listJobsSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().default(10),
   status: z.string().optional()
+});
+
+const claudeThreadQuerySchema = z.object({
+  view: z.enum(['standard', 'technical', 'simplified']).default('standard'),
+  includeTool: z.coerce.boolean().default(true)
 });
 
 /**
@@ -39,14 +51,33 @@ router.post('/', async (req: Request, res: Response) => {
       jobId,
       ...jobData,
       status: 'pending',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+    
+    // Get table name from environment variables
+    const jobsTable = process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs';
+    const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
     // Store job in DynamoDB
     await req.dynamoDb.send(new PutCommand({
-      TableName: process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs',
+      TableName: jobsTable,
       Item: job
     }));
+    
+    // Create repository records
+    for (const repositoryName of jobData.repositories) {
+      await req.dynamoDb.send(new PutCommand({
+        TableName: reposTable,
+        Item: {
+          jobId,
+          repositoryName,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }));
+    }
     
     // Submit job to AWS Batch
     await submitBatchJob(req.batchClient, jobId);
@@ -82,22 +113,65 @@ router.get('/', async (req: Request, res: Response) => {
     // Validate query parameters
     const { page, perPage, status } = listJobsSchema.parse(req.query);
     
-    // This would normally query DynamoDB
-    // For now, we'll return mock data
-    const jobs = getMockJobs(status);
+    // Get table name from environment variables
+    const jobsTable = process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs';
+    
+    let jobs = [];
+    
+    if (status) {
+      // Query jobs by status using GSI
+      const result = await req.dynamoDb.send(new QueryCommand({
+        TableName: jobsTable,
+        IndexName: 'status-createdAt-index',
+        KeyConditionExpression: '#status = :status',
+        ExpressionAttributeNames: {
+          '#status': 'status'
+        },
+        ExpressionAttributeValues: {
+          ':status': status
+        },
+        ScanIndexForward: false // Sort by createdAt in descending order
+      }));
+      
+      jobs = result.Items || [];
+    } else {
+      // Scan all jobs (in production, we would use pagination tokens)
+      const result = await req.dynamoDb.send(new ScanCommand({
+        TableName: jobsTable,
+        Limit: 100 // Limit to 100 jobs for performance
+      }));
+      
+      jobs = result.Items || [];
+      
+      // Sort by createdAt in descending order
+      jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    
+    // Transform jobs to match API response format
+    const transformedJobs = jobs.map(job => ({
+      jobId: job.jobId,
+      name: job.name,
+      type: job.type,
+      status: job.status,
+      createdAt: job.createdAt,
+      repositoryCount: job.repositories.length,
+      completedCount: job.repositories.filter((repo: any) => 
+        repo.status === 'completed' || repo.status === 'failed'
+      ).length
+    }));
     
     // Paginate results
     const startIndex = (page - 1) * perPage;
     const endIndex = startIndex + perPage;
-    const paginatedJobs = jobs.slice(startIndex, endIndex);
+    const paginatedJobs = transformedJobs.slice(startIndex, endIndex);
     
     res.json({
       jobs: paginatedJobs,
       pagination: {
         page,
         perPage,
-        total: jobs.length,
-        totalPages: Math.ceil(jobs.length / perPage)
+        total: transformedJobs.length,
+        totalPages: Math.ceil(transformedJobs.length / perPage)
       }
     });
   } catch (error) {
@@ -129,11 +203,17 @@ router.get('/:jobId', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
     
-    // This would normally query DynamoDB
-    // For now, we'll return mock data
-    const job = getMockJobDetails(jobId);
+    // Get table names from environment variables
+    const jobsTable = process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs';
+    const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
-    if (!job) {
+    // Get job from DynamoDB
+    const jobResult = await req.dynamoDb.send(new GetCommand({
+      TableName: jobsTable,
+      Key: { jobId }
+    }));
+    
+    if (!jobResult.Item) {
       return res.status(404).json({
         error: {
           message: 'Job not found'
@@ -141,7 +221,41 @@ router.get('/:jobId', async (req: Request, res: Response) => {
       });
     }
     
-    res.json(job);
+    const job = jobResult.Item;
+    
+    // Get repositories for job
+    const reposResult = await req.dynamoDb.send(new QueryCommand({
+      TableName: reposTable,
+      KeyConditionExpression: 'jobId = :jobId',
+      ExpressionAttributeValues: {
+        ':jobId': jobId
+      }
+    }));
+    
+    const repositories = (reposResult.Items || []).map(repo => ({
+      name: repo.repositoryName,
+      status: repo.status,
+      pullRequestUrl: repo.pullRequestUrl || null,
+      wereChangesNecessary: repo.wereChangesNecessary !== undefined ? repo.wereChangesNecessary : null,
+      completedAt: repo.completedAt || null
+    }));
+    
+    // Construct response
+    const response = {
+      jobId: job.jobId,
+      name: job.name,
+      description: job.description,
+      type: job.type,
+      prompt: job.prompt,
+      repositories,
+      createPullRequests: job.createPullRequests,
+      status: job.status,
+      createdAt: job.createdAt,
+      startedAt: job.startedAt || null,
+      completedAt: job.completedAt || null
+    };
+    
+    res.json(response);
   } catch (error) {
     console.error('Error getting job details:', error);
     res.status(500).json({
@@ -162,9 +276,51 @@ router.post('/:jobId/cancel', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
     
-    // This would normally update the job in DynamoDB and cancel the AWS Batch job
-    // For now, we'll return mock data
+    // Get table names from environment variables
+    const jobsTable = process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs';
+    
+    // Check if job exists
+    const jobResult = await req.dynamoDb.send(new GetCommand({
+      TableName: jobsTable,
+      Key: { jobId }
+    }));
+    
+    if (!jobResult.Item) {
+      return res.status(404).json({
+        error: {
+          message: 'Job not found'
+        }
+      });
+    }
+    
+    const job = jobResult.Item;
+    
+    // Check if job can be cancelled
+    if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+      return res.status(400).json({
+        error: {
+          message: `Job cannot be cancelled (status: ${job.status})`
+        }
+      });
+    }
+    
+    // Update job status to cancelled
     const cancelledAt = new Date().toISOString();
+    await req.dynamoDb.send(new UpdateCommand({
+      TableName: jobsTable,
+      Key: { jobId },
+      UpdateExpression: 'SET #status = :status, cancelledAt = :cancelledAt, updatedAt = :updatedAt',
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':status': 'cancelled',
+        ':cancelledAt': cancelledAt,
+        ':updatedAt': cancelledAt
+      }
+    }));
+    
+    // TODO: Cancel AWS Batch job
     
     res.json({
       jobId,
@@ -190,12 +346,18 @@ router.post('/:jobId/cancel', async (req: Request, res: Response) => {
 router.get('/:jobId/repositories/:repoName', async (req: Request, res: Response) => {
   try {
     const { jobId, repoName } = req.params;
+    const repositoryName = decodeURIComponent(repoName);
     
-    // This would normally query DynamoDB
-    // For now, we'll return mock data
-    const repositoryResult = getMockRepositoryResult(jobId, decodeURIComponent(repoName));
+    // Get table name from environment variables
+    const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
-    if (!repositoryResult) {
+    // Get repository from DynamoDB
+    const repoResult = await req.dynamoDb.send(new GetCommand({
+      TableName: reposTable,
+      Key: { jobId, repositoryName }
+    }));
+    
+    if (!repoResult.Item) {
       return res.status(404).json({
         error: {
           message: 'Repository result not found'
@@ -203,7 +365,26 @@ router.get('/:jobId/repositories/:repoName', async (req: Request, res: Response)
       });
     }
     
-    res.json(repositoryResult);
+    const repo = repoResult.Item;
+    
+    // Construct response
+    const response = {
+      jobId: repo.jobId,
+      repositoryName: repo.repositoryName,
+      status: repo.status,
+      pullRequestUrl: repo.pullRequestUrl || null,
+      wereChangesNecessary: repo.wereChangesNecessary !== undefined ? repo.wereChangesNecessary : null,
+      startedAt: repo.startedAt || null,
+      completedAt: repo.completedAt || null,
+      changes: repo.changes || [],
+      claudeConversation: repo.claudeConversation || {
+        threadId: null,
+        messages: []
+      },
+      logs: repo.logs || []
+    };
+    
+    res.json(response);
   } catch (error) {
     console.error('Error getting repository result:', error);
     res.status(500).json({
@@ -223,12 +404,28 @@ router.get('/:jobId/repositories/:repoName', async (req: Request, res: Response)
 router.get('/:jobId/repositories/:repoName/diff', async (req: Request, res: Response) => {
   try {
     const { jobId, repoName } = req.params;
+    const repositoryName = decodeURIComponent(repoName);
     
-    // This would normally query DynamoDB
-    // For now, we'll return mock data
-    const diff = getMockDiff(jobId, decodeURIComponent(repoName));
+    // Get table name from environment variables
+    const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
-    if (!diff) {
+    // Get repository from DynamoDB
+    const repoResult = await req.dynamoDb.send(new GetCommand({
+      TableName: reposTable,
+      Key: { jobId, repositoryName }
+    }));
+    
+    if (!repoResult.Item) {
+      return res.status(404).json({
+        error: {
+          message: 'Repository result not found'
+        }
+      });
+    }
+    
+    const repo = repoResult.Item;
+    
+    if (!repo.diff) {
       return res.status(404).json({
         error: {
           message: 'Diff not found'
@@ -237,7 +434,7 @@ router.get('/:jobId/repositories/:repoName/diff', async (req: Request, res: Resp
     }
     
     res.setHeader('Content-Type', 'text/plain');
-    res.send(diff);
+    res.send(repo.diff);
   } catch (error) {
     console.error('Error getting diff:', error);
     res.status(500).json({
@@ -257,12 +454,31 @@ router.get('/:jobId/repositories/:repoName/diff', async (req: Request, res: Resp
 router.get('/:jobId/repositories/:repoName/claude-thread', async (req: Request, res: Response) => {
   try {
     const { jobId, repoName } = req.params;
+    const repositoryName = decodeURIComponent(repoName);
     
-    // This would normally query DynamoDB
-    // For now, we'll return mock data
-    const claudeThread = getMockClaudeThread(jobId, decodeURIComponent(repoName));
+    // Validate query parameters
+    const { view, includeTool } = claudeThreadQuerySchema.parse(req.query);
     
-    if (!claudeThread) {
+    // Get table name from environment variables
+    const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
+    
+    // Get repository from DynamoDB
+    const repoResult = await req.dynamoDb.send(new GetCommand({
+      TableName: reposTable,
+      Key: { jobId, repositoryName }
+    }));
+    
+    if (!repoResult.Item) {
+      return res.status(404).json({
+        error: {
+          message: 'Repository result not found'
+        }
+      });
+    }
+    
+    const repo = repoResult.Item;
+    
+    if (!repo.claudeConversation) {
       return res.status(404).json({
         error: {
           message: 'Claude thread not found'
@@ -270,9 +486,48 @@ router.get('/:jobId/repositories/:repoName/claude-thread', async (req: Request, 
       });
     }
     
-    res.json(claudeThread);
+    // Filter messages based on view mode and includeTool
+    let messages = repo.claudeConversation.messages || [];
+    
+    if (!includeTool) {
+      messages = messages.filter((message: any) => 
+        message.type !== 'tool_call' && message.type !== 'tool_result'
+      );
+    }
+    
+    if (view === 'simplified') {
+      // For simplified view, only include prompts and responses
+      messages = messages.filter((message: any) => 
+        message.type === 'prompt' || message.type === 'response'
+      );
+    } else if (view === 'technical') {
+      // Technical view includes everything
+    } else {
+      // Standard view includes everything but formats it differently
+    }
+    
+    res.json({
+      threadId: repo.claudeConversation.threadId,
+      messages,
+      tokenUsage: repo.claudeConversation.tokenUsage || {
+        input: 0,
+        output: 0,
+        cacheCreation: 0,
+        cacheRead: 0,
+        total: 0
+      }
+    });
   } catch (error) {
     console.error('Error getting Claude thread:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: {
+          message: 'Invalid query parameters',
+          details: error.errors
+        }
+      });
+    }
+    
     res.status(500).json({
       error: {
         message: 'Failed to get Claude thread',
@@ -286,227 +541,35 @@ router.get('/:jobId/repositories/:repoName/claude-thread', async (req: Request, 
  * Submit job to AWS Batch
  */
 async function submitBatchJob(batchClient: BatchClient, jobId: string): Promise<void> {
-  // In a real implementation, this would submit a job to AWS Batch
-  console.log(`Submitting job ${jobId} to AWS Batch`);
-  
-  // Placeholder for AWS Batch job submission
-  // const command = new SubmitJobCommand({
-  //   jobName: `cody-batch-${jobId}`,
-  //   jobQueue: process.env.AWS_BATCH_JOB_QUEUE,
-  //   jobDefinition: process.env.AWS_BATCH_JOB_DEFINITION,
-  //   parameters: {
-  //     jobId
-  //   }
-  // });
-  // await batchClient.send(command);
-}
-
-/**
- * Get mock jobs for development
- */
-function getMockJobs(status?: string): any[] {
-  const jobs = [
-    {
-      jobId: 'job-123',
-      name: 'Update code patterns',
-      type: 'code-pattern-update',
-      status: 'in-progress',
-      createdAt: '2025-03-24T12:00:00Z',
-      repositoryCount: 2,
-      completedCount: 1
-    },
-    {
-      jobId: 'job-124',
-      name: 'Fix security vulnerabilities',
-      type: 'vulnerability-fix',
-      status: 'completed',
-      createdAt: '2025-03-23T12:00:00Z',
-      repositoryCount: 1,
-      completedCount: 1
+  try {
+    console.log(`Submitting job ${jobId} to AWS Batch`);
+    
+    // Get AWS Batch configuration from environment variables
+    const jobQueue = process.env.AWS_BATCH_JOB_QUEUE;
+    const jobDefinition = process.env.AWS_BATCH_JOB_DEFINITION;
+    
+    if (!jobQueue || !jobDefinition) {
+      console.error('AWS Batch configuration missing');
+      throw new Error('AWS Batch configuration missing');
     }
-  ];
-  
-  if (status) {
-    return jobs.filter(job => job.status === status);
+    
+    // Submit job to AWS Batch
+    const command = new SubmitJobCommand({
+      jobName: `cody-batch-${jobId}`,
+      jobQueue,
+      jobDefinition,
+      parameters: {
+        jobId,
+        maxRepositories: '5'
+      }
+    });
+    
+    await batchClient.send(command);
+    console.log(`Job ${jobId} submitted to AWS Batch`);
+  } catch (error) {
+    console.error(`Error submitting job ${jobId} to AWS Batch:`, error);
+    throw error;
   }
-  
-  return jobs;
-}
-
-/**
- * Get mock job details for development
- */
-function getMockJobDetails(jobId: string): any {
-  if (jobId === 'job-123') {
-    return {
-      jobId: 'job-123',
-      name: 'Update code patterns',
-      description: 'Apply a specific code change across repositories',
-      type: 'code-pattern-update',
-      prompt: 'You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of \'oldFunction(param)\' with \'newFunction(param, { version: 2 })\'.',
-      repositories: [
-        {
-          name: 'liamzdenek/repo1',
-          status: 'completed',
-          pullRequestUrl: 'https://github.com/liamzdenek/repo1/pull/1',
-          wereChangesNecessary: true,
-          completedAt: '2025-03-24T12:30:00Z'
-        },
-        {
-          name: 'liamzdenek/repo2',
-          status: 'in-progress',
-          pullRequestUrl: null,
-          wereChangesNecessary: null,
-          completedAt: null
-        }
-      ],
-      createPullRequests: true,
-      status: 'in-progress',
-      createdAt: '2025-03-24T12:00:00Z',
-      startedAt: '2025-03-24T12:01:00Z',
-      completedAt: null
-    };
-  }
-  
-  return null;
-}
-
-/**
- * Get mock repository result for development
- */
-function getMockRepositoryResult(jobId: string, repoName: string): any {
-  if (jobId === 'job-123' && repoName === 'liamzdenek/repo1') {
-    return {
-      jobId: 'job-123',
-      repositoryName: 'liamzdenek/repo1',
-      status: 'completed',
-      pullRequestUrl: 'https://github.com/liamzdenek/repo1/pull/1',
-      wereChangesNecessary: true,
-      startedAt: '2025-03-24T12:05:00Z',
-      completedAt: '2025-03-24T12:30:00Z',
-      changes: [
-        {
-          file: 'src/api.js',
-          diff: '--- a/src/api.js\n+++ b/src/api.js\n@@ -10,7 +10,7 @@\n function fetchData(id) {\n-  return oldFunction(id);\n+  return newFunction(id, { version: 2 });\n }'
-        },
-        {
-          file: 'src/utils.js',
-          diff: '--- a/src/utils.js\n+++ b/src/utils.js\n@@ -15,7 +15,7 @@\n function processItem(item) {\n-  const result = oldFunction(item.id);\n+  const result = newFunction(item.id, { version: 2 });\n   return result;\n }'
-        }
-      ],
-      claudeMessages: {
-        finalMessage: 'I\'ve updated all instances of the deprecated API call `oldFunction(param)` to use the new format `newFunction(param, { version: 2 })`. I found and updated 2 occurrences across 2 files.',
-        threadId: 'thread-123'
-      },
-      logs: [
-        {
-          timestamp: '2025-03-24T12:05:00Z',
-          level: 'INFO',
-          message: 'Starting repository analysis'
-        },
-        {
-          timestamp: '2025-03-24T12:10:00Z',
-          level: 'INFO',
-          message: 'Found deprecated API call in src/api.js'
-        },
-        {
-          timestamp: '2025-03-24T12:15:00Z',
-          level: 'INFO',
-          message: 'Found deprecated API call in src/utils.js'
-        },
-        {
-          timestamp: '2025-03-24T12:20:00Z',
-          level: 'INFO',
-          message: 'Generated fixes for affected files'
-        },
-        {
-          timestamp: '2025-03-24T12:25:00Z',
-          level: 'INFO',
-          message: 'Creating pull request'
-        },
-        {
-          timestamp: '2025-03-24T12:30:00Z',
-          level: 'INFO',
-          message: 'Pull request created: https://github.com/liamzdenek/repo1/pull/1'
-        }
-      ]
-    };
-  }
-  
-  return null;
-}
-
-/**
- * Get mock diff for development
- */
-function getMockDiff(jobId: string, repoName: string): string | null {
-  if (jobId === 'job-123' && repoName === 'liamzdenek/repo1') {
-    return `diff --git a/src/api.js b/src/api.js
-index 1234567..abcdefg 100644
---- a/src/api.js
-+++ b/src/api.js
-@@ -10,7 +10,7 @@ function fetchData(id) {
--  return oldFunction(id);
-+  return newFunction(id, { version: 2 });
- }
-
-diff --git a/src/utils.js b/src/utils.js
-index 7654321..gfedcba 100644
---- a/src/utils.js
-+++ b/src/utils.js
-@@ -15,7 +15,7 @@ function processItem(item) {
--  const result = oldFunction(item.id);
-+  const result = newFunction(item.id, { version: 2 });
-   return result;
- }`;
-  }
-  
-  return null;
-}
-
-/**
- * Get mock Claude thread for development
- */
-function getMockClaudeThread(jobId: string, repoName: string): any {
-  if (jobId === 'job-123' && repoName === 'liamzdenek/repo1') {
-    return {
-      threadId: 'thread-123',
-      messages: [
-        {
-          role: 'human',
-          content: 'You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of \'oldFunction(param)\' with \'newFunction(param, { version: 2 })\'. Here\'s the first file to analyze:\n\nsrc/api.js:\n```javascript\nfunction fetchData(id) {\n  return oldFunction(id);\n}\n```',
-          timestamp: '2025-03-24T12:10:00Z'
-        },
-        {
-          role: 'assistant',
-          content: 'I\'ll update the deprecated API call in this file. Here\'s the change I\'ll make:\n\n```javascript\nfunction fetchData(id) {\n  return newFunction(id, { version: 2 });\n}\n```\n\nThis replaces the deprecated `oldFunction(param)` with the new format `newFunction(param, { version: 2 })` as requested.',
-          timestamp: '2025-03-24T12:10:30Z'
-        },
-        {
-          role: 'human',
-          content: 'Here\'s another file to analyze:\n\nsrc/utils.js:\n```javascript\nfunction processItem(item) {\n  const result = oldFunction(item.id);\n  return result;\n}\n```',
-          timestamp: '2025-03-24T12:15:00Z'
-        },
-        {
-          role: 'assistant',
-          content: 'I\'ll update the deprecated API call in this file as well. Here\'s the change I\'ll make:\n\n```javascript\nfunction processItem(item) {\n  const result = newFunction(item.id, { version: 2 });\n  return result;\n}\n```\n\nThis replaces the deprecated `oldFunction(param)` with the new format `newFunction(param, { version: 2 })` as requested.',
-          timestamp: '2025-03-24T12:15:30Z'
-        },
-        {
-          role: 'human',
-          content: 'Please summarize all the changes you\'ve made.',
-          timestamp: '2025-03-24T12:20:00Z'
-        },
-        {
-          role: 'assistant',
-          content: 'I\'ve updated all instances of the deprecated API call `oldFunction(param)` to use the new format `newFunction(param, { version: 2 })`. I found and updated 2 occurrences across 2 files:\n\n1. In `src/api.js`: Updated the call in the `fetchData` function\n2. In `src/utils.js`: Updated the call in the `processItem` function\n\nAll instances have been successfully updated to use the new API format.',
-          timestamp: '2025-03-24T12:20:30Z'
-        }
-      ]
-    };
-  }
-  
-  return null;
 }
 
 export default router;
