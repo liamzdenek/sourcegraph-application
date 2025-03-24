@@ -80,7 +80,7 @@
         "command": "npx nx build batch"
       }
     },
-    "deploy": {
+    "deploy-cdk": {
       "executor": "nx:run-commands",
       "options": {
         "cwd": "dist/packages/cdk",
@@ -104,6 +104,65 @@
           "projects": "self"
         }
       ]
+    },
+    "deploy-batch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run batch:docker-build && nx run batch:docker-tag && nx run batch:docker-login && nx run batch:docker-push"
+      },
+      "dependsOn": [
+        {
+          "target": "build-batch",
+          "projects": "self"
+        }
+      ]
+    },
+    "deploy-frontend": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/packages/cdk",
+        "command": "cdk deploy --app ./main.js --profile lz-demos --require-approval never --exclusively CodyBatchStack/Frontend"
+      },
+      "dependsOn": [
+        {
+          "target": "build",
+          "projects": "self"
+        },
+        {
+          "target": "build-frontend",
+          "projects": "self"
+        }
+      ]
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "echo '=== STEP 1: Cleaning up previous build artifacts ==='",
+          "rm -rf dist/packages/cdk/cdk.out",
+          "echo '=== STEP 2: Building all packages ==='",
+          "nx run-many --target=build --projects=shared,github-client,claude-client,api,batch,cdk --parallel=false",
+          "echo '=== STEP 3: Building frontend with API URL from CloudFormation ==='",
+          "nx run cdk:build-frontend",
+          "echo '=== STEP 4: Deploying CDK stack ==='",
+          "cd dist/packages/cdk && npx cdk deploy --app ./main.js --profile lz-demos --require-approval never",
+          "echo '=== STEP 5: Waiting for CloudFormation to complete ==='",
+          "sleep 10",
+          "echo '=== STEP 6-10: Getting ECR repository URI, Building and Pushing Docker image ==='",
+          "REPO_URI=$(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --query \"Stacks[0].Outputs[?OutputKey=='BatchJobRepoUri'].OutputValue\" --output text) && echo \"Found ECR repository URI: $REPO_URI\" && echo 'Building Docker image...' && docker build -t cody-batch-job -f packages/batch/Dockerfile . && echo 'Logging in to ECR...' && ECR_REGISTRY=$(echo $REPO_URI | cut -d'/' -f1) && echo \"ECR Registry: $ECR_REGISTRY\" && aws ecr get-login-password --profile lz-demos | docker login --username AWS --password-stdin $ECR_REGISTRY && echo 'Tagging Docker image...' && docker tag cody-batch-job:latest $REPO_URI:latest && echo 'Pushing Docker image...' && docker push $REPO_URI:latest",
+          "echo '=== STEP 11: Getting API URL ==='",
+          "API_URL=$(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --query \"Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue\" --output text)",
+          "echo \"API URL: $API_URL\"",
+          "echo '=== STEP 12: Getting CloudFront URL ==='",
+          "FRONTEND_URL=$(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --query \"Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue\" --output text)",
+          "echo \"Frontend URL: $FRONTEND_URL\"",
+          "echo '=== Deployment Complete! ==='",
+          "echo \"API: $API_URL\"",
+          "echo \"Frontend: $FRONTEND_URL\"",
+          "echo \"ECR Repository: $REPO_URI\""
+        ],
+        "parallel": false
+      }
     },
     "test": {
       "options": {

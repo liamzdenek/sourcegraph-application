@@ -101,6 +101,34 @@ Based on feedback, we've made several important architectural adjustments:
       - DynamoDB Tables: `CodyBatchStack-JobsTable1970BC16-13XFSFAMG4F3D` and `CodyBatchStack-RepositoriesTable15FA3697-BNQH46SJXX44`
       - AWS Batch Job Queue: `JobQueue-EEIJwmJX4QNTsUXr`
       - AWS Batch Job Definition: `JobDefinition-Q7XYsqkzhrhXOM5X`
+      - ECR Repository: `cody-batch-job`
+
+23. **AWS Batch Configuration Improvements**:
+    - Created ECR repository for batch job Docker image
+    - Created Dockerfile for batch job
+    - Added Docker build, tag, login, and push commands to batch package
+    - Updated CDK stack to use ECR repository for batch job
+    - Added deployment targets for batch job
+    - Created deploy-batch-with-ecr command to handle the correct deployment sequence
+    - Updated operations.md and runbook.md with batch job deployment procedures
+    - Added troubleshooting procedures for batch job issues
+    - Fixed issue with Docker tag command when ECR repository doesn't exist yet
+    - Optimized Dockerfile layer ordering for faster builds
+    - Added missing dependencies to batch package (zod-to-json-schema, @octokit/rest, simple-git, glob)
+    - Updated operations.md and runbook.md with Docker container dependency information
+
+24. **Deployment Process Streamlining**:
+    - Consolidated all deployment steps into a single comprehensive command
+    - Renamed deployment targets for clarity (deploy-cdk, deploy)
+    - Added cleanup step to fix permission issues with CDK build
+    - Updated operations.md with new consolidated deployment procedure
+    - Updated runbook.md with new deployment instructions
+    - Simplified batch job deployment process
+    - Added detailed output of API URL, Frontend URL, and ECR Repository URI
+    - Fixed ECR login issue by combining commands with && operators to preserve variables
+    - Removed redundant deploy-batch-with-ecr target
+    - Added missing zod-to-json-schema dependency to batch package
+    - Fixed frontend API URL environment variable by using build-frontend target
 
 22. **Frontend Type Safety Improvements**: Enhanced the frontend components with better type safety:
     - Updated API service layer to use shared types from the shared package

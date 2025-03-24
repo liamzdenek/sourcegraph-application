@@ -36,15 +36,17 @@ This runbook provides procedures for common operational tasks and troubleshootin
    EOF
    ```
 
-4. Build all packages
-   ```bash
-   nx run-many --target=build --all
-   ```
-
-5. Deploy infrastructure
+4. Deploy everything with a single command
    ```bash
    nx run cdk:deploy
    ```
+
+   This comprehensive deployment command:
+   - Cleans up previous build artifacts
+   - Builds all packages
+   - Deploys the CDK stack to AWS
+   - Builds and pushes the Docker image for the batch job
+   - Outputs all important URLs and resource names
 
 6. Verify deployment
    ```bash
@@ -165,20 +167,41 @@ This runbook provides procedures for common operational tasks and troubleshootin
 #### Procedure
 1. Make changes to batch job code
 
-2. Build batch job
+2. Deploy everything with a single command (recommended approach)
    ```bash
+   # This comprehensive command will:
+   # 1. Clean up previous build artifacts
+   # 2. Build all packages
+   # 3. Deploy the CDK stack
+   # 4. Build the Docker image
+   # 5. Tag the image with the ECR repository URI
+   # 6. Log in to ECR
+   # 7. Push the image to ECR
+   nx run cdk:deploy
+   ```
+
+3. If you only need to update the batch job without redeploying the entire stack:
+   ```bash
+   # Build batch job
    nx run batch:build
-   ```
-
-3. Build and push Docker image
-   ```bash
-   nx run batch:docker-build
-   nx run batch:docker-push
-   ```
-
-4. Update job definition
-   ```bash
+   
+   # Deploy batch job only
    nx run cdk:deploy-batch
+   ```
+
+4. If you need to run the Docker operations separately:
+   ```bash
+   # Build the Docker image
+   nx run batch:docker-build
+   
+   # Tag the image with the ECR repository URI
+   nx run batch:docker-tag
+   
+   # Log in to ECR
+   nx run batch:docker-login
+   
+   # Push the image to ECR
+   nx run batch:docker-push
    ```
 
 5. Verify deployment
@@ -193,6 +216,145 @@ This runbook provides procedures for common operational tasks and troubleshootin
        "repositories": ["liamzdenek/test-repo"],
        "createPullRequests": false
      }'
+   ```
+
+#### Troubleshooting Docker Image Issues
+
+1. **ECR Repository Not Found**
+   
+   **Symptoms**: Error message like "The repository with name 'cody-batch-job' does not exist in the registry"
+   
+   **Solution**:
+   ```bash
+   # Deploy the CDK stack first to create the ECR repository
+   nx run cdk:deploy
+   
+   # Then build and push the Docker image
+   nx run cdk:deploy-batch
+   ```
+
+2. **Docker Build Fails**
+   
+   **Symptoms**: Error during Docker build
+   
+   **Solution**:
+   ```bash
+   # Check if Docker is running
+   docker info
+   
+   # Make sure all required packages are built
+   nx run-many --target=build --projects=batch,shared,github-client,claude-client
+   
+   # Try building with verbose output
+   docker build -t cody-batch-job -f packages/batch/Dockerfile . --progress=plain
+   ```
+
+3. **Docker Build is Slow**
+   
+   **Symptoms**: Docker build takes a long time to complete
+   
+   **Solution**:
+   ```bash
+   # Optimize Dockerfile layer ordering
+   # 1. Install system dependencies first (rarely change)
+   # 2. Copy and install package dependencies (change less frequently)
+   # 3. Copy application code (changes most frequently)
+   
+   # Example of optimized Dockerfile:
+   FROM node:18-slim
+   WORKDIR /app
+   
+   # Install git first (system dependency that rarely changes)
+   RUN apt-get update && apt-get install -y git
+   
+   # Copy package files (change less frequently than source code)
+   COPY packages/batch/package.json ./
+   COPY package-lock.json ./
+   
+   # Install dependencies
+   RUN npm install --production
+   
+   # Copy the built application (changes most frequently)
+   COPY dist/packages/batch ./dist/packages/batch
+   COPY dist/packages/shared ./dist/packages/shared
+   COPY dist/packages/github-client ./dist/packages/github-client
+   COPY dist/packages/claude-client ./dist/packages/claude-client
+   
+   # Set the entry point
+   ENTRYPOINT ["node", "dist/packages/batch/main.js"]
+   ```
+
+3. **AWS CLI Authentication Issues**
+   
+   **Symptoms**: "Unable to locate credentials" or "Access denied" errors
+   
+   **Solution**:
+   ```bash
+   # Verify AWS CLI configuration
+   aws configure list --profile lz-demos
+   
+   # Try manually logging in to ECR
+   aws ecr get-login-password --profile lz-demos | docker login --username AWS --password-stdin $(aws ecr describe-repositories --repository-names cody-batch-job --profile lz-demos --query 'repositories[0].repositoryUri' --output text | cut -d'/' -f1)
+   ```
+
+4. **Job Runs But Shows AWS CLI Help**
+   
+   **Symptoms**: Job runs but only shows AWS CLI help text
+   
+   **Solution**: This indicates the Docker image wasn't properly built or pushed. Follow these steps:
+   ```bash
+   # Rebuild and push the Docker image
+   nx run cdk:deploy
+   
+   # Verify the image exists in ECR
+   aws ecr describe-images --repository-name cody-batch-job --profile lz-demos
+   ```
+
+5. **Missing Dependencies in Batch Job**
+   
+   **Symptoms**: Error messages like "Cannot find module 'zod-to-json-schema'" or "Cannot find module '@octokit/rest'" or "Cannot find module 'simple-git'" or "Cannot find module 'glob'"
+   
+   **Solution**: Add the missing dependencies to the batch package.json and rebuild:
+   ```bash
+   # Add the dependencies
+   cd packages/batch
+   npm install --save zod-to-json-schema @octokit/rest simple-git glob
+   
+   # Rebuild and redeploy
+   nx run cdk:deploy
+   ```
+   
+   **Required Dependencies**:
+   The batch job requires these key dependencies:
+   - `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-batch`: AWS SDK for DynamoDB and Batch
+   - `@octokit/rest`: GitHub API client
+   - `simple-git`: Git operations library
+   - `glob`: File pattern matching
+   - `zod`: Schema validation
+   - `zod-to-json-schema`: Convert Zod schemas to JSON Schema
+   - `dotenv`: Environment variable management
+   
+   **Testing Dependencies Locally**:
+   ```bash
+   # Build and test the Docker container locally
+   docker build -t cody-batch-job -f packages/batch/Dockerfile .
+   docker run --rm cody-batch-job
+   
+   # Expected output: "Job ID is required" (when no job ID is provided)
+   # If you see "Cannot find module" errors, add the missing dependency
+   ```
+
+6. **Frontend API URL Not Set Correctly**
+   
+   **Symptoms**: Frontend shows "loading job details" forever, API requests fail
+   
+   **Solution**: Make sure the frontend is built with the correct API URL:
+   ```bash
+   # Build frontend with API URL from CloudFormation
+   nx run cdk:build-frontend
+   
+   # Deploy everything with the correct build sequence
+   nx run cdk:deploy
    ```
 
 ## Monitoring Procedures

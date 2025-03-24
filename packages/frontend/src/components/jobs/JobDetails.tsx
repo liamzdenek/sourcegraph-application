@@ -46,6 +46,7 @@ const JobDetails: React.FC = () => {
     }
   };
 
+  // Check if we're still loading
   if (currentJobStatus === 'loading') {
     return (
       <div className={styles.loading}>
@@ -54,11 +55,12 @@ const JobDetails: React.FC = () => {
     );
   }
 
+  // Check for errors
   if (currentJobStatus === 'error') {
     return (
       <div className={styles.error}>
         <p>Error loading job details</p>
-        <button 
+        <button
           className={`${appStyles.button} ${appStyles.small}`}
           onClick={handleRefresh}
         >
@@ -68,12 +70,37 @@ const JobDetails: React.FC = () => {
     );
   }
 
+  // Check if job data is missing even though the request completed
+  if (currentJobStatus === 'success' && !currentJob) {
+    console.error('Job details request succeeded but returned no data');
+    return (
+      <div className={styles.notFound}>
+        <p>Job details could not be loaded. The job may not exist.</p>
+        <div className={styles.actions}>
+          <button
+            className={`${appStyles.button} ${appStyles.secondary}`}
+            onClick={handleRefresh}
+          >
+            Retry
+          </button>
+          <Link
+            to="/jobs"
+            className={`${appStyles.button} ${appStyles.primary}`}
+          >
+            Back to Jobs
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Final check for undefined job (fallback)
   if (!currentJob) {
     return (
       <div className={styles.notFound}>
         <p>Job not found</p>
-        <Link 
-          to="/jobs" 
+        <Link
+          to="/jobs"
           className={`${appStyles.button} ${appStyles.primary}`}
         >
           Back to Jobs

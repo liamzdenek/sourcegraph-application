@@ -168,10 +168,26 @@ export function ApiProvider({ children }: ApiProviderProps) {
     refetch: refreshCurrentJob
   } = useQuery({
     queryKey: ['job', currentJobId],
-    queryFn: () => apiClient.getJobDetails(currentJobId!),
+    queryFn: async () => {
+      if (!currentJobId) {
+        throw new Error('Job ID is required');
+      }
+      try {
+        const result = await apiClient.getJobDetails(currentJobId);
+        if (!result) {
+          console.error('API returned undefined job details');
+          throw new Error('Job details not found');
+        }
+        return result;
+      } catch (error) {
+        console.error('Error fetching job details:', error);
+        throw error;
+      }
+    },
     enabled: !!currentJobId,
     staleTime: 30000, // 30 seconds
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 3, // Retry failed requests 3 times
   });
   
   const loadJobDetails = (jobId: string) => {

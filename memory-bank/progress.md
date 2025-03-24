@@ -113,10 +113,20 @@ The following components are now functional:
 - ✅ NX targets for building and deploying
 - ✅ Deployed API and frontend services
 - ✅ Environment variable validation with required/optional distinction
+- ✅ ECR repository for batch job Docker image
+- ✅ Dockerfile for batch job
+- ✅ Docker build, tag, login, and push commands
+- ✅ Batch job deployment procedures with proper sequencing
+- ✅ Troubleshooting procedures for batch job issues
+- ✅ Improved deployment workflow for ECR repository and Docker image
+- ✅ Consolidated deployment process with single command
+- ✅ Automatic cleanup of build artifacts
+- ✅ Comprehensive deployment output with resource URLs
+- ✅ Robust variable handling in deployment scripts
 
 ## What's Left to Build
 
-### Foundation (95% Complete)
+### Foundation (99% Complete)
 
 - [x] Initialize Nx workspace
 - [x] Set up package structure
@@ -158,7 +168,7 @@ The following components are now functional:
 - [x] Update API to use environment variables
 - [x] Add support for Claude conversation viewing
 
-### Batch Package (80% Complete)
+### Batch Package (100% Complete)
 
 - [x] Initialize package structure
 - [x] Implement job processing framework
@@ -170,8 +180,8 @@ The following components are now functional:
 - [x] Set up diff generation and storage
 - [x] Implement Claude message thread storage
 - [x] Create test script for local testing
-- [ ] Create Docker container for job processing
-- [ ] Set up AWS Batch integration
+- [x] Create Docker container for job processing
+- [x] Set up AWS Batch integration
 
 ### Frontend Package (100% Complete)
 
@@ -254,13 +264,13 @@ The following components are now functional:
 | Infrastructure | Completed | 100% |
 | Shared Package | Completed | 100% |
 | API Package | Completed | 100% |
-| Batch Package | In Progress | 80% |
+| Batch Package | Completed | 100% |
 | Frontend Package | Completed | 100% |
 | GitHub Client | In Progress | 80% |
 | Claude Client | Completed | 100% |
 | CDK Package | Completed | 100% |
 | Deployment | Completed | 100% |
-| **Overall** | **In Progress** | **97%** |
+| **Overall** | **In Progress** | **99%** |
 
 ## Known Issues
 
@@ -357,6 +367,42 @@ The following components are now functional:
     - Some environment variables are required, others are optional
     - Mitigation: Update environment variable validation to distinguish between required and optional variables
 
+24. **AWS Batch Job Shows AWS CLI Help**:
+    - AWS Batch job runs but only shows AWS CLI help text
+    - Mitigation: Create proper Docker image for batch job and push to ECR
+
+25. **Docker Image Build and Push**:
+    - Need to build and push Docker image for batch job
+    - Mitigation: Create Dockerfile and add build/push commands to project.json
+
+26. **ECR Repository Not Found During Docker Tag**:
+    - Docker tag command fails because ECR repository doesn't exist yet
+    - Mitigation: Create deploy-batch-with-ecr command to deploy CDK stack first, then build and push Docker image
+
+27. **CDK Build Permission Issues**:
+    - Permission issues with CDK build and deployment
+    - Mitigation: Add cleanup step to remove previous build artifacts before building
+
+28. **Deployment Process Complexity**:
+    - Multiple commands needed for complete deployment
+    - Mitigation: Consolidate all deployment steps into a single comprehensive command
+
+29. **ECR Login Issues**:
+    - Variables not persisting across commands in nx:run-commands
+    - Mitigation: Combine commands with && operators to preserve variables
+
+30. **Missing Dependencies in Batch Job**:
+    - Error: Cannot find module 'zod-to-json-schema', '@octokit/rest', 'simple-git', 'glob'
+    - Mitigation: Add missing dependencies to batch package.json and update documentation
+
+31. **Frontend API URL Environment Variable Not Set**:
+    - Frontend shows "loading job details" forever due to incorrect API URL
+    - Mitigation: Use build-frontend target in deploy command to set API URL environment variable
+
+32. **Docker Build Performance**:
+    - Docker build is slow due to suboptimal layer ordering
+    - Mitigation: Optimize Dockerfile layer ordering to put rarely changing layers first (system dependencies, then package dependencies, then application code)
+
 ## Next Milestone
 
 **Testing and Optimization (Target: Day 15-20)**
@@ -371,8 +417,6 @@ The following components are now functional:
 - ✅ Verify conversation history storage and retrieval
 
 **Remaining Tasks**
-- Complete Docker container for batch job processing
-- Implement AWS Batch integration for job processing
 - Add pull request link storage and reuse in GitHub client
 - Set up testing framework for all packages
 - Optimize Claude prompt engineering for different types of code analysis

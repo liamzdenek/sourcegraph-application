@@ -73,8 +73,23 @@ apiClient.getJobs = async (page = 1, perPage = 10, status?: JobStatus): Promise<
 };
 
 apiClient.getJobDetails = async (jobId: string): Promise<JobDetails> => {
-  const response = await api.get(`/jobs/${jobId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/jobs/${jobId}`);
+    
+    // Validate the response data
+    if (!response.data) {
+      console.error('API returned empty response for job details');
+      throw new Error('Job details not found');
+    }
+    
+    // Log the response for debugging
+    console.log('Job details response:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching job details for job ${jobId}:`, error);
+    throw error;
+  }
 };
 
 apiClient.createJob = async (job: CreateJobRequest): Promise<JobDetails> => {

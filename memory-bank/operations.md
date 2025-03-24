@@ -38,55 +38,57 @@ The following resources have been deployed to AWS:
 ## How to Operate the System
 
 ### Deployment
-#### Initial Deployment
+#### Complete Deployment
 
 ```bash
-# Install dependencies
+# Install dependencies (first time only)
 npm install
 
-# Deploy infrastructure (this will automatically build the frontend with the correct API URL)
+# Deploy everything with a single command
 nx run cdk:deploy
-
-# Behind the scenes, this will:
-# 1. Build the API package
-# 2. Build the batch package
-# 3. Build the frontend with the correct API URL from CloudFormation
-# 4. Build the CDK package
-# 5. Deploy the CDK stack, which includes the frontend deployment to S3
 ```
 
-#### Frontend Updates
+This comprehensive deployment command:
+1. Cleans up previous build artifacts
+2. Builds all packages (shared, github-client, claude-client, api, batch, frontend, cdk)
+3. Deploys the CDK stack to AWS
+4. Builds the Docker image for the batch job
+5. Logs in to ECR
+6. Tags and pushes the Docker image to ECR
+7. Outputs all important URLs and resource names
+
+#### Partial Deployments
+
+If you need to deploy only specific parts of the system, you can use these commands:
+
+##### Frontend Only
 
 ```bash
-# The frontend is automatically built with the correct API URL during deployment
-# You can run this command to deploy everything including frontend updates:
-nx run cdk:deploy
+# Build frontend
+nx run frontend:build
 
-# If you want to build the frontend manually with the API URL from CloudFormation:
-nx run cdk:build-frontend
-
-# Then deploy the updated frontend:
-nx run cdk:deploy
+# Deploy frontend only
+nx run cdk:deploy-frontend
 ```
 
-#### Backend Updates
+##### CDK Stack Only
 
 ```bash
-# Build API
-nx run api:build
+# Build all required packages
+nx run-many --target=build --projects=shared,github-client,claude-client,api,batch,frontend,cdk
 
-# Deploy everything (including the API Lambda)
-nx run cdk:deploy
+# Deploy CDK stack only
+nx run cdk:deploy-cdk
 ```
 
-#### Batch Job Updates
+##### Batch Job Only
 
 ```bash
 # Build batch job
 nx run batch:build
 
-# Deploy everything (including the batch job definition)
-nx run cdk:deploy
+# Deploy batch job only (requires CDK stack to be deployed first)
+nx run cdk:deploy-batch
 ```
 
 #### Troubleshooting Deployment Issues
@@ -247,7 +249,7 @@ curl -v https://api.example.com/health
 #### Batch Job Issues
 
 1. Check AWS Batch job status and logs
-2. Verify container image is correct
+2. Verify container image is correct and has all required dependencies
 3. Check GitHub API access and rate limits
 4. Check Claude API access and token usage
 5. Confirm DynamoDB write permissions
@@ -258,7 +260,25 @@ aws batch describe-jobs --jobs job-id-from-aws-batch
 
 # Check container logs
 aws logs tail /aws/batch/job/job-id-from-aws-batch --follow
+
+# Test Docker container locally
+docker build -t cody-batch-job -f packages/batch/Dockerfile .
+docker run --rm cody-batch-job
+# Expected output: "Job ID is required" (when no job ID is provided)
 ```
+
+#### Docker Container Dependencies
+
+The batch job Docker container requires these dependencies:
+- `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-batch`: AWS SDK for DynamoDB and Batch
+- `@octokit/rest`: GitHub API client
+- `simple-git`: Git operations library
+- `glob`: File pattern matching
+- `zod`: Schema validation
+- `zod-to-json-schema`: Convert Zod schemas to JSON Schema
+- `dotenv`: Environment variable management
+
+If you encounter "Cannot find module" errors, ensure these dependencies are in the batch package.json.
 
 #### Frontend Issues
 

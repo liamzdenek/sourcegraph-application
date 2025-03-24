@@ -10,6 +10,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -135,11 +136,20 @@ export class CodyBatchStack extends cdk.Stack {
       ],
     });
 
+    // Create ECR repository for batch job Docker image
+    const batchJobRepo = new ecr.Repository(this, 'BatchJobRepo', {
+      repositoryName: 'cody-batch-job',
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development only
+    });
+    
+    // Grant pull permissions to the task execution role
+    batchJobRepo.grantPull(taskExecutionRole);
+
     // Create AWS Batch job definition
     const jobDefinition = new batch.CfnJobDefinition(this, 'JobDefinition', {
       type: 'container',
       containerProperties: {
-        image: 'amazon/aws-cli',  // Placeholder, will be replaced with actual image
+        image: `${batchJobRepo.repositoryUri}:latest`,  // Use the ECR repository URI
         fargatePlatformConfiguration: {
           platformVersion: 'LATEST',
         },
@@ -149,7 +159,7 @@ export class CodyBatchStack extends cdk.Stack {
         ],
         executionRoleArn: taskExecutionRole.roleArn,
         jobRoleArn: taskExecutionRole.roleArn,
-        command: ['node', 'dist/packages/batch/main.js'],
+        // No need for command as it should be defined in the Dockerfile
         environment: [
           { name: 'DYNAMODB_JOBS_TABLE', value: jobsTable.tableName },
           { name: 'DYNAMODB_REPOSITORIES_TABLE', value: repositoriesTable.tableName },
@@ -310,6 +320,16 @@ export class CodyBatchStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'JobDefinitionArn', {
       value: jobDefinition.ref,
       description: 'Job Definition ARN',
+    });
+
+    new cdk.CfnOutput(this, 'BatchJobRepoUri', {
+      value: batchJobRepo.repositoryUri,
+      description: 'Batch Job ECR Repository URI',
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
+      value: distribution.distributionId,
+      description: 'CloudFront Distribution ID',
     });
   }
 }
