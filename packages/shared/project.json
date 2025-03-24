@@ -13,8 +13,14 @@
         "main": "packages/shared/src/index.ts",
         "tsConfig": "packages/shared/tsconfig.lib.json",
         "assets": ["packages/shared/*.md"],
-        "format": ["cjs"],
-        "generatePackageJson": true
+        "format": ["esm"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/shared/**/*.ts"]
       }
     }
   }

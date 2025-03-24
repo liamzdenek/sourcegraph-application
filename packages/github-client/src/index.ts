@@ -1,1 +1,1 @@
-export * from './lib/github-client';
+export * from './lib/github-client.js';
