@@ -78,6 +78,10 @@ export class ClaudeClient {
     });
     this.toolRegistry = new ToolRegistry();
     this.initializeTools();
+    
+    // Log the client object
+    console.log('Anthropic client initialized');
+    console.log('Client properties:', Object.keys(this.client));
   }
 
   /**
@@ -144,156 +148,207 @@ When you're done, use the task_complete tool to indicate completion and provide 
       iterations++;
       console.log(`Iteration ${iterations}/${maxIterations}`);
       
-      // Get Claude's response with prompt caching
-      // Use type assertion to work around type issues
-      const response = await this.client.beta.messages.create({
-        model: this.config.model,
-        max_tokens: this.config.maxTokens || 100000,
-        temperature: this.config.temperature || 0.5,
-        system,
-        tools: this.toolRegistry.getClaudeToolDefinitions(),
-        messages: messages as any,
-        'anthropic-beta': 'messages-2023-12-15'
-      } as any) as unknown as AnthropicResponse;
-      
-      // Update token usage
-      this.tokenUsage[sessionId].input += response.usage.input_tokens;
-      this.tokenUsage[sessionId].output += response.usage.output_tokens;
-      
-      // Track cache usage if available
-      if ('cache_creation_input_tokens' in response.usage) {
-        this.tokenUsage[sessionId].cacheCreation += response.usage.cache_creation_input_tokens || 0;
-      }
-      if ('cache_read_input_tokens' in response.usage) {
-        this.tokenUsage[sessionId].cacheRead += response.usage.cache_read_input_tokens || 0;
-      }
-      
-      // Add Claude's response to conversation history
-      conversationHistory.push({
-        role: 'assistant',
-        content: response.content
-      });
-      
-      // Check if Claude used a tool
-      if (response.stop_reason === 'tool_use') {
-        // Process each tool use request
-        for (const block of response.content) {
-          if (block.type === 'tool_use') {
-            const toolUseBlock = block as AnthropicToolUseBlock;
-            console.log(`Claude is using tool: ${toolUseBlock.name}`);
-            
-            try {
-              // Execute the requested tool using the registry with context
-              const toolResult = await this.toolRegistry.executeTool(
-                toolUseBlock.name,
-                toolUseBlock.input,
-                context
-              );
-              
-              // Add Claude's response to messages
-              messages.push({
-                role: 'assistant',
-                content: response.content
-              });
-              
-              // Add tool result to messages
-              messages.push({
-                role: 'user',
-                content: [
-                  {
-                    type: 'tool_result',
-                    tool_use_id: toolUseBlock.id,
-                    content: JSON.stringify(toolResult)
-                  }
-                ]
-              });
-              
-              // Add tool result to conversation history
-              conversationHistory.push({
-                role: 'user',
-                content: [
-                  {
-                    type: 'tool_result',
-                    tool_use_id: toolUseBlock.id,
-                    content: JSON.stringify(toolResult)
-                  }
-                ]
-              });
-              
-              // Check if the task_complete tool was used
-              if (toolUseBlock.name === 'task_complete') {
-                complete = true;
-              }
-            } catch (error) {
-              // Handle tool execution errors
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              console.error(`Error executing tool ${toolUseBlock.name}:`, errorMessage);
-              
-              // Add Claude's response to messages
-              messages.push({
-                role: 'assistant',
-                content: response.content
-              });
-              
-              // Add error result to messages
-              messages.push({
-                role: 'user',
-                content: [
-                  {
-                    type: 'tool_result',
-                    tool_use_id: toolUseBlock.id,
-                    is_error: true,
-                    content: `Error executing tool: ${errorMessage}`
-                  }
-                ]
-              });
-              
-              // Add error result to conversation history
-              conversationHistory.push({
-                role: 'user',
-                content: [
-                  {
-                    type: 'tool_result',
-                    tool_use_id: toolUseBlock.id,
-                    is_error: true,
-                    content: `Error executing tool: ${errorMessage}`
-                  }
-                ]
-              });
-            }
-          }
-        }
-      } else {
-        // Claude has completed its response without using a tool
-        messages.push({
-          role: 'assistant',
-          content: response.content
+      try {
+        // Use direct API call to the Messages API
+        console.log('Sending request to Anthropic API...');
+        
+        // Prepare request body
+        const requestBody = {
+          model: this.config.model,
+          max_tokens: this.config.maxTokens || 64000,
+          temperature: this.config.temperature || 0.5,
+          system,
+          messages,
+          tools: this.toolRegistry.getClaudeToolDefinitions()
+        };
+        
+        console.log('Request body:', JSON.stringify(requestBody, null, 2));
+        
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': this.config.apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-beta': 'messages-2023-12-15'
+          },
+          body: JSON.stringify(requestBody)
         });
         
-        // Check if Claude indicates completion
-        const responseText = response.content
-          .filter(block => block.type === 'text')
-          .map(block => (block as AnthropicTextBlock).text)
-          .join('\n');
-          
-        if (
-          responseText.includes('I have completed the task') ||
-          responseText.includes('All necessary changes have been made') ||
-          responseText.includes('The task is complete')
-        ) {
-          complete = true;
-        } else {
-          // Ask Claude if it needs to do anything else
-          messages.push({
-            role: 'user',
-            content: 'Do you need to make any other changes to complete the task? If not, please indicate that the task is complete or use the task_complete tool.'
-          });
-          
-          conversationHistory.push({
-            role: 'user',
-            content: 'Do you need to make any other changes to complete the task? If not, please indicate that the task is complete or use the task_complete tool.'
-          });
+        console.log('Response status:', response.status);
+        
+        // Log response headers
+        const headers: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        console.log('Response headers:', headers);
+        
+        // Check if response is OK
+        if (!response.ok) {
+          const responseText = await response.text();
+          console.error('Error response:', responseText);
+          throw new Error(`API request failed: ${response.status} ${responseText}`);
         }
+        
+        // Parse response
+        const responseText = await response.text();
+        console.log('Response text (first 500 chars):', responseText.substring(0, 500));
+        
+        let responseData: AnthropicResponse;
+        try {
+          responseData = JSON.parse(responseText) as AnthropicResponse;
+        } catch (error) {
+          console.error('Error parsing response:', error);
+          throw new Error(`Error parsing response: ${error}`);
+        }
+        
+        console.log('Response:', responseData);
+        
+        // Update token usage
+        if (responseData.usage) {
+          this.tokenUsage[sessionId].input += responseData.usage.input_tokens;
+          this.tokenUsage[sessionId].output += responseData.usage.output_tokens;
+          
+          // Track cache usage if available
+          if ('cache_creation_input_tokens' in responseData.usage) {
+            this.tokenUsage[sessionId].cacheCreation += responseData.usage.cache_creation_input_tokens || 0;
+          }
+          if ('cache_read_input_tokens' in responseData.usage) {
+            this.tokenUsage[sessionId].cacheRead += responseData.usage.cache_read_input_tokens || 0;
+          }
+        }
+        
+        // Add Claude's response to conversation history
+        conversationHistory.push({
+          role: 'assistant',
+          content: responseData.content
+        });
+        
+        // Check if Claude used a tool
+        if (responseData.stop_reason === 'tool_use') {
+          // Process each tool use request
+          for (const block of responseData.content) {
+            if (block.type === 'tool_use') {
+              const toolUseBlock = block as AnthropicToolUseBlock;
+              console.log(`Claude is using tool: ${toolUseBlock.name}`);
+              
+              try {
+                // Execute the requested tool using the registry with context
+                const toolResult = await this.toolRegistry.executeTool(
+                  toolUseBlock.name,
+                  toolUseBlock.input,
+                  context
+                );
+                
+                // Add Claude's response to messages
+                messages.push({
+                  role: 'assistant',
+                  content: responseData.content
+                });
+                
+                // Add tool result to messages
+                messages.push({
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'tool_result',
+                      tool_use_id: toolUseBlock.id,
+                      content: JSON.stringify(toolResult)
+                    }
+                  ]
+                });
+                
+                // Add tool result to conversation history
+                conversationHistory.push({
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'tool_result',
+                      tool_use_id: toolUseBlock.id,
+                      content: JSON.stringify(toolResult)
+                    }
+                  ]
+                });
+                
+                // Check if the task_complete tool was used
+                if (toolUseBlock.name === 'task_complete') {
+                  complete = true;
+                }
+              } catch (error) {
+                // Handle tool execution errors
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                console.error(`Error executing tool ${toolUseBlock.name}:`, errorMessage);
+                
+                // Add Claude's response to messages
+                messages.push({
+                  role: 'assistant',
+                  content: responseData.content
+                });
+                
+                // Add error result to messages
+                messages.push({
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'tool_result',
+                      tool_use_id: toolUseBlock.id,
+                      is_error: true,
+                      content: `Error executing tool: ${errorMessage}`
+                    }
+                  ]
+                });
+                
+                // Add error result to conversation history
+                conversationHistory.push({
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'tool_result',
+                      tool_use_id: toolUseBlock.id,
+                      is_error: true,
+                      content: `Error executing tool: ${errorMessage}`
+                    }
+                  ]
+                });
+              }
+            }
+          }
+        } else {
+          // Claude has completed its response without using a tool
+          messages.push({
+            role: 'assistant',
+            content: responseData.content
+          });
+          
+          // Check if Claude indicates completion
+          const responseText = responseData.content
+            .filter(block => block.type === 'text')
+            .map(block => (block as AnthropicTextBlock).text)
+            .join('\n');
+            
+          if (
+            responseText.includes('I have completed the task') ||
+            responseText.includes('All necessary changes have been made') ||
+            responseText.includes('The task is complete')
+          ) {
+            complete = true;
+          } else {
+            // Ask Claude if it needs to do anything else
+            messages.push({
+              role: 'user',
+              content: 'Do you need to make any other changes to complete the task? If not, please indicate that the task is complete or use the task_complete tool.'
+            });
+            
+            conversationHistory.push({
+              role: 'user',
+              content: 'Do you need to make any other changes to complete the task? If not, please indicate that the task is complete or use the task_complete tool.'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error calling Claude API:', error);
+        throw error;
       }
     }
     

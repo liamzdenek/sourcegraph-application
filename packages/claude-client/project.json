@@ -17,11 +17,26 @@
         "generatePackageJson": true
       }
     },
+    "build-test": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/claude-client-test",
+        "main": "packages/claude-client/src/test-claude-client.ts",
+        "tsConfig": "packages/claude-client/tsconfig.json",
+        "format": ["cjs"],
+        "bundle": true,
+        "platform": "node"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "ts-node packages/claude-client/src/test-claude-client.ts {args.path} \"{args.prompt}\" {args.iterations}",
-        "cwd": "."
+        "commands": [
+          "nx run claude-client:build-test",
+          "node dist/packages/claude-client-test/test-claude-client.cjs {args.path} \"{args.prompt}\" {args.iterations}"
+        ],
+        "parallel": false
       }
     }
   }

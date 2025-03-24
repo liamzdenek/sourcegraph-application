@@ -54,10 +54,18 @@ export class ToolRegistry {
       throw new Error(`Tool not found: ${name}`);
     }
     
+    console.log(`\n=== TOOL EXECUTION: ${name} ===`);
+    console.log(`Repository Path: ${context.repositoryPath}`);
+    console.log(`Input: ${JSON.stringify(input, null, 2)}`);
+    
     try {
-      return await tool.execute(input, context);
+      const result = await tool.execute(input, context);
+      console.log(`Result: ${JSON.stringify(result, null, 2)}`);
+      console.log(`=== END TOOL EXECUTION: ${name} ===\n`);
+      return result;
     } catch (error) {
       console.error(`Error executing tool ${name}:`, error);
+      console.log(`=== END TOOL EXECUTION (ERROR): ${name} ===\n`);
       throw error;
     }
   }

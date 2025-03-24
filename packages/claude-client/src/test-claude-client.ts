@@ -8,19 +8,62 @@ import * as fs from 'fs';
 async function main() {
   // Parse command line arguments
   const args = process.argv.slice(2);
-  const repositoryPath = args[0] || process.cwd();
+  const repositoryPathArg = args[0] || process.cwd();
   const prompt = args[1] || 'Analyze this repository and list all the files.';
   const maxIterations = parseInt(args[2] || '10');
   
-  console.log(`Repository path: ${repositoryPath}`);
+  // Get the current working directory
+  const cwd = process.cwd();
+  console.log(`Current working directory: ${cwd}`);
+  
+  // Try different ways to resolve the repository path
+  let repositoryPath = path.resolve(cwd, repositoryPathArg);
+  
+  // Check if repository path exists
+  try {
+    const stats = await fs.promises.stat(repositoryPath);
+    if (!stats.isDirectory()) {
+      console.error(`Error: ${repositoryPath} is not a directory`);
+      process.exit(1);
+    }
+  } catch (error) {
+    // Try to find the test-project directory in the current working directory
+    if (repositoryPathArg.includes('test-project')) {
+      const testProjectPath = path.join(cwd, 'test-project');
+      try {
+        const stats = await fs.promises.stat(testProjectPath);
+        if (stats.isDirectory()) {
+          repositoryPath = testProjectPath;
+          console.log(`Found test-project at: ${repositoryPath}`);
+        }
+      } catch (error) {
+        // Ignore
+      }
+    }
+    
+    // Check again if the repository path exists
+    try {
+      const stats = await fs.promises.stat(repositoryPath);
+      if (!stats.isDirectory()) {
+        console.error(`Error: ${repositoryPath} is not a directory`);
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(`Error: ${repositoryPath} does not exist`);
+      process.exit(1);
+    }
+  }
+  
+  console.log(`Repository path argument: ${repositoryPathArg}`);
+  console.log(`Resolved repository path: ${repositoryPath}`);
   console.log(`Prompt: ${prompt}`);
   console.log(`Max iterations: ${maxIterations}`);
   
   // Initialize Claude client
   const claudeClient = new ClaudeClient({
     apiKey: process.env['CLAUDE_API_KEY'] || '',
-    model: process.env['CLAUDE_MODEL'] || 'claude-3-7-sonnet-20240229',
-    maxTokens: parseInt(process.env['CLAUDE_MAX_TOKENS'] || '100000'),
+    model: process.env['CLAUDE_MODEL'] || 'claude-3-7-sonnet-20250219',
+    maxTokens: parseInt(process.env['CLAUDE_MAX_TOKENS'] || '64000'),
     temperature: parseFloat(process.env['CLAUDE_TEMPERATURE'] || '0.5')
   });
   

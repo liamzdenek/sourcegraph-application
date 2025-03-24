@@ -42,6 +42,24 @@ Based on feedback, we've made several important architectural adjustments:
 
 13. **Claude Client Implementation**: Implemented a comprehensive Claude client with tool-based interaction, autonomous sessions, token usage tracking, and prompt caching.
 
+14. **Claude Client Enhancements**: Added direct API calls with improved error handling, detailed logging, and path resolution for repository tools.
+
+15. **Test Repository Creation**: Created a test repository with a vulnerable Log4j dependency for validating Claude client functionality.
+
+16. **Runbook Updates**: Added comprehensive Claude client troubleshooting procedures to the runbook.
+
+17. **Claude API Integration Learnings**: Discovered several important architectural adjustments needed for Claude API integration:
+    - Claude 3.7 models require the Messages API, not the Completions API
+    - Claude 3.7 has a maximum token limit of 64,000 tokens
+    - Path resolution requires careful validation for repository operations
+    - Claude API has rate limits that need to be respected
+    - Need more robust error handling for API calls
+
+18. **Conversation History Storage Gap**: Identified a gap in how we're storing Claude conversation history:
+    - Current DynamoDB schema only stores `finalMessage` and `threadId`
+    - Frontend expects full conversation history with all messages and timestamps
+    - Need to store tool calls and results for complete understanding of AI reasoning
+
 ## Next Steps
 
 ### Immediate Tasks (Next 1-2 Days)
@@ -72,52 +90,81 @@ Based on feedback, we've made several important architectural adjustments:
    - Set up token usage tracking ✅
    - Add prompt caching support ✅
    - Create comprehensive documentation ✅
+   - Implement direct API calls with error handling ✅
+   - Add detailed logging for API interactions ✅
+   - Create test repository for validation ✅
 
-5. **Initialize API Package**: ✅
+5. **Update Claude Client for Conversation Storage**:
+   - Add timestamps to each message in the conversation history
+   - Format roles consistently as "human"/"assistant" instead of "user"/"assistant"
+   - Create a method to convert internal conversation format to API response format
+   - Add type field to distinguish between regular messages, tool calls, and tool results
+
+6. **Update DynamoDB Schema**:
+   - Replace simple `claudeMessages` map with a comprehensive `claudeConversation` structure
+   - Add support for storing tool calls and results
+   - Add detailed token usage tracking fields
+
+7. **Update API Contract**:
+   - Update Claude message thread endpoint to include tool interactions
+   - Add formatting options for different view modes
+   - Ensure efficient retrieval of potentially large conversation histories
+
+8. **Initialize API Package**: ✅
    - Set up Express application ✅
    - Configure Lambda handler ✅
    - Create health check endpoint ✅
    - Set up job management endpoints ✅
    - Set up error handling and logging ✅
 
-6. **Initialize Batch Package**: ✅
+9. **Initialize Batch Package**: ✅
    - Set up package structure ✅
    - Create job processing framework
    - Set up GitHub API integration
    - Set up Claude API integration
+   - Implement conversation history storage
 
-7. **Initialize Frontend Package**: ✅
-   - Set up React application with Vite ✅
-   - Configure Tanstack Router
-   - Create basic layout and navigation
+10. **Initialize Frontend Package**: ✅
+    - Set up React application with Vite ✅
+    - Configure Tanstack Router
+    - Create basic layout and navigation
+    - Implement specialized rendering for tool calls and results
 
-8. **Initialize CDK Package**: ✅
-   - Set up package structure ✅
-   - Define AWS resources
-   - Configure deployment
+11. **Initialize CDK Package**: ✅
+    - Set up package structure ✅
+    - Define AWS resources
+    - Configure deployment
 
 ### Short-Term Goals (Next Week)
 
-1. **Test Claude Client**:
-   - Test the Claude client with real repositories
-   - Verify tool-based interaction works correctly
-   - Optimize prompt engineering for code analysis
-   - Measure token usage and performance
+1. **Test Claude Client**: ✅
+   - Test the Claude client with real repositories ✅
+   - Verify tool-based interaction works correctly ✅
+   - Optimize prompt engineering for code analysis ✅
+   - Measure token usage and performance ✅
+   - Implement error handling and debugging ✅
 
-2. **Connect API to Clients**:
+2. **Enhance Claude Client**:
+   - Implement conversation history formatting for storage
+   - Add support for different Claude models
+   - Implement rate limit handling with exponential backoff
+   - Add repository chunking for large codebases
+   - Improve error recovery for tool execution failures
+
+3. **Connect API to Clients**:
    - Integrate GitHub client with API
    - Integrate Claude client with API
    - Set up DynamoDB for persistent storage
    - Implement AWS Batch job submission
 
-3. **Develop Frontend Features**:
+4. **Develop Frontend Features**:
    - Job creation form with repository limit
    - Job status monitoring
    - Result visualization
    - Patch file download
-   - Claude message thread viewing
+   - Claude message thread viewing with technical and simplified views
 
-4. **Deploy Initial Version**:
+5. **Deploy Initial Version**:
    - Set up AWS resources
    - Deploy backend services
    - Deploy frontend application
@@ -192,6 +239,16 @@ Based on feedback, we've made several important architectural adjustments:
    - **Rationale**: Provides structured interaction with repositories and better control
    - **Considerations**: Need to handle tool execution errors and token usage
 
+10. **Claude API Access**:
+    - **Decision**: Using direct API calls with fetch instead of relying solely on the SDK
+    - **Rationale**: Provides better error handling, debugging, and compatibility with newer models
+    - **Considerations**: Need to manage API versioning and headers correctly
+
+11. **Conversation History Storage**:
+    - **Decision**: Using a comprehensive structure to store the full conversation including tool calls
+    - **Rationale**: Provides complete context for understanding AI reasoning and debugging
+    - **Considerations**: Need to manage potentially large conversation histories efficiently
+
 ### Technical Considerations
 
 1. **GitHub API Integration**:
@@ -204,16 +261,26 @@ Based on feedback, we've made several important architectural adjustments:
    - Handling large codebases within token limits
    - Managing autonomous sessions and iteration limits
    - Tracking token usage for cost management
+   - Handling API errors and rate limits
+   - Path resolution for repository tools
+   - Storing and retrieving complete conversation histories
 
 3. **Job Processing**:
    - Handling long-running jobs with AWS Batch
    - Implementing retry and error recovery mechanisms
    - Managing parallel processing for efficiency
+   - Storing large conversation histories efficiently
 
 4. **Security Considerations**:
    - Securing GitHub service account credentials
    - Limiting repository access to specified patterns
    - Protecting against injection attacks in generated code
+   - Securing Claude API keys
+
+5. **Frontend Rendering**:
+   - How to display complex tool interactions in a user-friendly way
+   - Providing both technical and simplified views of conversations
+   - Handling large conversation histories efficiently
 
 ### Open Questions
 
@@ -231,8 +298,19 @@ Based on feedback, we've made several important architectural adjustments:
    - How to provide meaningful feedback during long-running jobs
    - How to present complex code changes in an understandable way
    - How to handle partial successes or failures
+   - How to display tool interactions in a user-friendly way
 
 4. **Claude Client Integration**:
    - How to integrate the Claude client with the batch processing framework
    - How to handle token usage limits and cost management
    - How to optimize prompt engineering for different types of code analysis
+   - How to handle different Claude models and API versions
+   - How to implement robust error handling and recovery
+   - How to efficiently store and retrieve large conversation histories
+
+5. **Testing Strategy**:
+   - How to test the Claude client without incurring excessive API costs
+   - How to create representative test repositories
+   - How to validate the correctness of code changes
+   - How to simulate error conditions and edge cases
+   - How to test conversation history storage and retrieval

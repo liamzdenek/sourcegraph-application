@@ -22,6 +22,7 @@ The project is in the **initial planning and setup phase**. We have:
 - ✅ Implemented the shared package with types, schemas, utilities, and configuration
 - ✅ Fixed ESLint configuration for dependency checks
 - ✅ Implemented the Claude client with tool-based interaction
+- ✅ Created a test repository for validating Claude client functionality
 
 ## Recent Updates
 
@@ -40,6 +41,11 @@ Based on feedback, we've made several important architectural adjustments:
 - ✅ Implemented shared package with Zod schemas for validation
 - ✅ Replaced deprecated generatePackageJson option with ESLint dependency checks
 - ✅ Implemented Claude client with tool-based interaction, token usage tracking, and autonomous sessions
+- ✅ Enhanced Claude client with direct API calls and improved error handling
+- ✅ Added comprehensive debugging for Claude API interactions
+- ✅ Updated runbook with Claude client troubleshooting procedures
+- ✅ Identified conversation history storage gap and updated API contracts
+- ✅ Updated DynamoDB schema for comprehensive conversation storage
 
 ## What Works
 
@@ -56,6 +62,8 @@ The following components are now functional:
 - ✅ GitHub client with repository operations
 - ✅ Shared package with types, schemas, utilities, and configuration
 - ✅ Claude client with tool-based interaction and autonomous sessions
+- ✅ Claude client debugging and error handling
+- ✅ Test repository for validating Claude client functionality
 
 ## What's Left to Build
 
@@ -120,6 +128,7 @@ The following components are now functional:
 - [ ] Implement result visualization
 - [ ] Add patch file download functionality
 - [ ] Add Claude message thread viewing
+- [ ] Implement technical and simplified conversation views
 - [ ] Set up error handling and notifications
 
 ### GitHub Client Package (80% Complete)
@@ -142,6 +151,13 @@ The following components are now functional:
 - [x] Set up token usage tracking
 - [x] Add prompt caching support
 - [x] Create comprehensive documentation
+- [x] Implement direct API calls for better error handling
+- [x] Add detailed logging for API interactions
+- [x] Create test repository for validation
+- [ ] Add timestamps to conversation messages
+- [ ] Format roles consistently as "human"/"assistant"
+- [ ] Add message type field for distinguishing message types
+- [ ] Create conversation formatting method for storage
 - [ ] Implement integration with batch processing
 
 ### CDK Package (10% Complete)
@@ -174,7 +190,7 @@ The following components are now functional:
 | Claude Client | In Progress | 90% |
 | CDK Package | In Progress | 10% |
 | Deployment | Not Started | 0% |
-| **Overall** | **In Progress** | **50%** |
+| **Overall** | **In Progress** | **52%** |
 
 ## Known Issues
 
@@ -202,11 +218,37 @@ The following components are now functional:
    - Tool execution might fail due to errors in the repository
    - Mitigation: Implemented robust error handling in tools
 
+7. **Claude API Version Compatibility**:
+   - Different Claude models require different API endpoints
+   - Mitigation: Implemented direct API calls with proper headers and error handling
+
+8. **Path Resolution in Repository Tools**:
+   - Relative paths can be tricky when working with repositories
+   - Mitigation: Added path resolution logic and validation in tool execution
+
+9. **Claude API Rate Limits**:
+   - Claude API has rate limits that need to be respected
+   - Mitigation: Added rate limit header logging and prepared for backoff strategy implementation
+
+10. **Conversation History Storage Gap**:
+    - Current DynamoDB schema only stores `finalMessage` and `threadId`
+    - Frontend expects full conversation history with all messages and timestamps
+    - Mitigation: Updated DynamoDB schema with comprehensive `claudeConversation` structure
+
+11. **Large Conversation Histories**:
+    - Conversation histories with many tool calls could become very large
+    - Mitigation: Consider compression or chunking for very large conversations
+
+12. **Frontend Rendering of Tool Interactions**:
+    - Tool calls and results need specialized rendering
+    - Mitigation: Plan to implement technical and simplified view modes
+
 ## Next Milestone
 
 **Batch Processing Implementation (Target: Day 5-7)**
 - Connect API to GitHub and Claude clients
-- Set up DynamoDB for persistent storage
-- Create initial frontend components
+- Set up DynamoDB for persistent storage with updated schema
+- Create initial frontend components with conversation viewing
 - Implement batch job processing framework
 - Integrate Claude client with batch processing
+- Implement conversation history formatting and storage

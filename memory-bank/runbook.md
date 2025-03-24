@@ -490,6 +490,134 @@ This runbook provides procedures for common operational tasks and troubleshootin
 2. Update frontend code if needed
 3. Consider adding more robust error handling
 
+### Claude Client Issues
+
+#### Validate
+1. Check if the Claude API is accessible
+   ```bash
+   # Test the Claude API with a simple request
+   curl -v https://api.anthropic.com/v1/messages \
+     -H "Content-Type: application/json" \
+     -H "x-api-key: $CLAUDE_API_KEY" \
+     -H "anthropic-version: 2023-06-01" \
+     -d '{
+       "model": "claude-3-7-sonnet-20250219",
+       "max_tokens": 1000,
+       "messages": [{"role": "user", "content": "Hello, Claude!"}]
+     }'
+   ```
+
+2. Check Claude API rate limits
+   ```bash
+   # Make a request and check the rate limit headers in the response
+   curl -v https://api.anthropic.com/v1/messages \
+     -H "Content-Type: application/json" \
+     -H "x-api-key: $CLAUDE_API_KEY" \
+     -H "anthropic-version: 2023-06-01" \
+     -d '{
+       "model": "claude-3-7-sonnet-20250219",
+       "max_tokens": 10,
+       "messages": [{"role": "user", "content": "Hi"}]
+     }' 2>&1 | grep -i "anthropic-ratelimit"
+   ```
+
+3. Verify Claude client logs
+   ```bash
+   # Check logs for Claude client errors
+   grep -r "Error calling Claude API" /path/to/logs
+   ```
+
+#### Triage
+1. Determine the type of failure:
+   - Authentication issues: Check API key
+   - Rate limit issues: Check rate limit headers
+   - Model availability: Check if the model is available
+   - Request format issues: Check request payload
+   - Response parsing issues: Check response format
+
+2. Check Claude API documentation for changes
+   ```bash
+   # Open the Claude API documentation
+   open https://docs.anthropic.com/claude/reference/
+   ```
+
+3. Check for Claude API status updates
+   ```bash
+   # Check Anthropic status page
+   open https://status.anthropic.com/
+   ```
+
+#### Act
+1. For authentication issues:
+   ```bash
+   # Update Claude API key
+   export CLAUDE_API_KEY="new-api-key"
+   
+   # Update environment variables in configuration
+   sed -i 's/CLAUDE_API_KEY=.*/CLAUDE_API_KEY=new-api-key/' .env
+   ```
+
+2. For rate limit issues:
+   ```bash
+   # Implement exponential backoff and retry logic
+   # Example retry logic in code:
+   # let retries = 0;
+   # while (retries < maxRetries) {
+   #   try {
+   #     const response = await fetch('https://api.anthropic.com/v1/messages', ...);
+   #     if (response.ok) return response;
+   #   } catch (error) {
+   #     if (error.status === 429) {
+   #       const backoff = Math.pow(2, retries) * 1000;
+   #       await new Promise(resolve => setTimeout(resolve, backoff));
+   #       retries++;
+   #     } else {
+   #       throw error;
+   #     }
+   #   }
+   # }
+   ```
+
+3. For model availability issues:
+   ```bash
+   # Update to use a different model
+   # In code:
+   # const model = process.env.CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
+   ```
+
+4. For request format issues:
+   ```bash
+   # Update request format to match API requirements
+   # Example:
+   curl -v https://api.anthropic.com/v1/messages \
+     -H "Content-Type: application/json" \
+     -H "x-api-key: $CLAUDE_API_KEY" \
+     -H "anthropic-version: 2023-06-01" \
+     -d '{
+       "model": "claude-3-7-sonnet-20250219",
+       "max_tokens": 1000,
+       "messages": [{"role": "user", "content": "Hello, Claude!"}]
+     }'
+   ```
+
+5. For response parsing issues:
+   ```bash
+   # Update response parsing logic
+   # Example:
+   # try {
+   #   const responseText = await response.text();
+   #   console.log('Response text:', responseText);
+   #   const responseData = JSON.parse(responseText);
+   # } catch (error) {
+   #   console.error('Error parsing response:', error);
+   # }
+   ```
+
+#### Reflect
+1. Document the incident
+2. Update Claude client code if needed
+3. Consider adding more robust error handling and logging
+
 ## Common Error Messages, Root Causes, and Solutions
 
 ### API Errors
@@ -521,6 +649,19 @@ This runbook provides procedures for common operational tasks and troubleshootin
 | "Failed to fetch" | CORS issues or API unavailable | Check CORS configuration and API status |
 | "Cannot read property of undefined" | Null reference in frontend code | Add null checks and improve error handling |
 | "ChunkLoadError" | JavaScript bundling issue | Check webpack configuration and rebuild |
+
+### Claude Client Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| "Error calling Claude API: 401 Unauthorized" | Invalid API key | Check and update Claude API key |
+| "Error calling Claude API: 429 Too Many Requests" | Rate limit exceeded | Implement backoff and retry strategy |
+| "Error calling Claude API: 400 Bad Request" | Invalid request format | Check request payload format |
+| "Error parsing response" | Invalid response format | Check response parsing logic |
+| "Cannot read properties of undefined (reading 'messages')" | SDK version mismatch | Update SDK or use direct API calls |
+| "max_tokens: X > Y, which is the maximum allowed" | Token limit exceeded | Reduce max_tokens parameter |
+| "model: X is not supported on this API" | Using wrong API for model | Use Messages API for Claude 3 models |
+| "Unexpected token '<', '<html>..." | HTML response instead of JSON | Check API endpoint and authentication |
 
 ## Maintenance Procedures
 
@@ -624,6 +765,40 @@ aws batch list-jobs \
   --job-status RUNNING
 ```
 
+### Claude Client Maintenance
+
+#### Testing Claude API Connection
+```bash
+# Test Claude API connection
+curl -v https://api.anthropic.com/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $CLAUDE_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{
+    "model": "claude-3-7-sonnet-20250219",
+    "max_tokens": 1000,
+    "messages": [{"role": "user", "content": "Hello, Claude!"}]
+  }'
+```
+
+#### Updating Claude SDK
+```bash
+# Update Claude SDK
+npm update @anthropic-ai/sdk
+
+# Check SDK version
+npm list @anthropic-ai/sdk
+```
+
+#### Monitoring Claude API Usage
+```bash
+# Check Claude API usage from logs
+grep -r "Token usage" /path/to/logs | tail -n 10
+
+# Extract token usage statistics
+grep -r "Token usage" /path/to/logs | awk '{print $NF}' | jq -s 'add'
+```
+
 ## Operational Procedures
 
 ### Submitting a Test Job
@@ -660,3 +835,17 @@ curl -v https://api-url/jobs/job-123/repositories/liamzdenek%2Frepo1/diff > patc
 ```bash
 # View Claude message thread from API
 curl -v https://api-url/jobs/job-123/repositories/liamzdenek%2Frepo1/claude-thread
+```
+
+### Testing Claude Client Locally
+```bash
+# Set environment variables
+export CLAUDE_API_KEY="your-api-key"
+export CLAUDE_MODEL="claude-3-7-sonnet-20250219"
+export CLAUDE_MAX_TOKENS="64000"
+
+# Run test script
+nx run claude-client:test --path=test-project --prompt="Analyze this repository and identify any security vulnerabilities." --iterations=5
+
+# View conversation history
+cat claude-session.json | jq
