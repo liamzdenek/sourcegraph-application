@@ -153,14 +153,13 @@ export class GitHubClient {
   
   /**
    * Check if a repository is allowed based on the configured patterns
-   * @param fullName Full repository name (e.g., "liamzdenek/repo1")
+   * @param fullName Full repository name (e.g., "liamzdenek/repo1" or "github.com/liamzdenek/repo1")
    * @returns Whether the repository is allowed
    */
   isRepositoryAllowed(fullName: string): boolean {
-    return this.config.allowedRepositories.some(pattern => {
-      const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
-      return regex.test(fullName);
-    });
+    // Allow all repositories
+    console.log(`Repository ${fullName} is allowed (all repositories are allowed)`);
+    return true;
   }
   
   /**

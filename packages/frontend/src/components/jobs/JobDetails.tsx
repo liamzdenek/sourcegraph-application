@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from '@tanstack/react-router';
 import styles from './JobDetails.module.css';
 import appStyles from '../../app/app.module.css';
 import { useApiContext } from '../../context/ApiContext';
 import { formatDate } from 'shared';
 
 const JobDetails: React.FC = () => {
-  const { 
-    currentJob, 
-    currentJobStatus, 
+  // Get the job ID from the route parameters
+  const { jobId } = useParams({ from: '/jobs/$jobId' });
+  
+  const {
+    currentJob,
+    currentJobStatus,
+    loadJobDetails,
     refreshCurrentJob,
     cancelJob,
     cancelJobStatus
@@ -16,16 +20,28 @@ const JobDetails: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'details' | 'repositories'>('details');
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
+  
+  // Load job details when the component mounts or jobId changes
+  useEffect(() => {
+    console.log(`Loading job details for job ID: ${jobId}`);
+    if (jobId) {
+      loadJobDetails(jobId);
+    }
+  }, [jobId, loadJobDetails]);
 
   const handleCancelJob = () => {
-    if (currentJob) {
-      cancelJob(currentJob.jobId);
+    if (jobId) {
+      console.log(`Cancelling job: ${jobId}`);
+      cancelJob(jobId);
       setShowConfirmCancel(false);
     }
   };
 
   const handleRefresh = () => {
-    refreshCurrentJob();
+    if (jobId) {
+      console.log(`Refreshing job details for job ID: ${jobId}`);
+      refreshCurrentJob();
+    }
   };
 
   const getStatusClass = (status: string) => {

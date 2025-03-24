@@ -95,8 +95,36 @@ export class CodyBatchStack extends cdk.Stack {
     );
 
     // Grant permissions to the task execution role
+    // Grant full access to the specific DynamoDB tables
     jobsTable.grantReadWriteData(taskExecutionRole);
     repositoriesTable.grantReadWriteData(taskExecutionRole);
+    
+    // Grant permission to describe AWS Batch jobs
+    taskExecutionRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['batch:DescribeJobs'],
+      resources: ['*'],
+      effect: iam.Effect.ALLOW,
+    }));
+    
+    // Grant additional DynamoDB permissions for any table with the prefix
+    taskExecutionRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan',
+        'dynamodb:BatchGetItem',
+        'dynamodb:BatchWriteItem',
+        'dynamodb:DescribeTable'
+      ],
+      resources: [
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/cody-batch-*`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/cody-batch-*/index/*`
+      ],
+      effect: iam.Effect.ALLOW,
+    }));
 
     // Create VPC for AWS Batch
     const batchVpc = new ec2.Vpc(this, 'BatchVpc', {

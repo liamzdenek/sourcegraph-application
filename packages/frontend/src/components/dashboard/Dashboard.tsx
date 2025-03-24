@@ -86,8 +86,8 @@ const Dashboard: React.FC = () => {
           {healthStatus === 'success' && health && (
             <>
               <div className={styles.statusSummary}>
-                <div className={`${styles.statusIndicator} ${health.status === 'healthy' ? styles.healthy : styles.unhealthy}`}>
-                  {health.status === 'healthy' ? '✓' : '✗'}
+                <div className={`${styles.statusIndicator} ${health.status === 'ok' ? styles.healthy : styles.unhealthy}`}>
+                  {health.status === 'ok' ? '✓' : '✗'}
                 </div>
                 <div className={styles.statusInfo}>
                   <h3>System {health.status}</h3>

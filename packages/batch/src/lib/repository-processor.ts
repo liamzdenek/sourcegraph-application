@@ -205,16 +205,18 @@ export class RepositoryProcessor {
 
     try {
       // Clone repository
-      console.log(`Cloning repository ${repositoryName} to ${repoDir}`);
-      const { git } = await this.githubClient.cloneRepository(repositoryName);
+      // The GitHub client expects just the owner/repo format, not the full github.com URL
+      // If the repository name starts with "github.com/", remove it
+      const cleanRepoName = repositoryName.startsWith('github.com/')
+        ? repositoryName.substring('github.com/'.length)
+        : repositoryName;
+      
+      console.log(`Cloning repository ${repositoryName} to ${repoDir} (using ${cleanRepoName})`);
+      const { git } = await this.githubClient.cloneRepository(cleanRepoName);
 
-      // Create branch if creating pull requests
+      // We're not creating branches or pull requests for now
+      console.log(`Skipping branch creation - pull requests are disabled`);
       let branchName = '';
-      if (createPullRequests) {
-        branchName = `cody-batch/${jobId}`;
-        console.log(`Creating branch ${branchName}`);
-        await git.checkoutBranch(branchName, 'main');
-      }
 
       // Run Claude analysis
       console.log(`Running Claude analysis on ${repositoryName}`);
@@ -255,9 +257,21 @@ export class RepositoryProcessor {
       if (wereChangesNecessary) {
         console.log(`Changes were necessary for ${repositoryName}`);
 
-        // Generate diff
+        // Stage all changes to generate a proper diff
+        console.log(`Staging changes for ${repositoryName} to generate diff`);
+        await git.add('.');
+        
+        // Generate diff of staged changes
+        console.log(`Generating diff for ${repositoryName}`);
         const diffResult = await git.diff(['--cached']);
         diff = diffResult || '';
+        
+        if (!diff) {
+          console.log(`No diff generated for ${repositoryName}, checking for unstaged changes`);
+          // Try to get unstaged changes if no staged changes were found
+          const unstagedDiff = await git.diff();
+          diff = unstagedDiff || '';
+        }
 
         // Store diff
         await this.dynamoDBService.storeRepositoryDiff(
@@ -266,79 +280,80 @@ export class RepositoryProcessor {
           diff
         );
 
-        // Create pull request if requested
-        if (createPullRequests && branchName) {
-          console.log(`Creating pull request for ${repositoryName}`);
-
-          // Commit changes
-          await git.add('.');
-          await git.commit(`Changes from Cody Batch (Job ID: ${jobId})`);
-
-          // Push branch
-          await git.push('origin', branchName);
-
-          // Create pull request
-          const [owner, repo] = repositoryName.split('/');
-          const pr = await this.githubClient.createPullRequest(
-            repositoryName,
-            `Cody Batch: ${jobId}`,
-            generatePRDescription(jobId, prompt, result),
-            branchName,
-            'main'
-          );
-
-          pullRequestUrl = pr.htmlUrl;
-
-          // Store pull request URL
-          await this.dynamoDBService.storeRepositoryDiff(
-            jobId,
-            repositoryName,
-            diff,
-            pullRequestUrl
-          );
-        }
+        // Skip pull request creation - just store the diff
+        console.log(`Skipping pull request creation - pull requests are disabled`);
+        console.log(`Storing diff for ${repositoryName}`);
+        
+        // Log the diff for debugging
+        console.log(`Diff for ${repositoryName}:`);
+        console.log(diff.substring(0, 500) + (diff.length > 500 ? '... (truncated)' : ''));
+        
+        // Store the diff without creating a pull request
+        await this.dynamoDBService.storeRepositoryDiff(
+          jobId,
+          repositoryName,
+          diff
+        );
       } else {
         console.log(`No changes were necessary for ${repositoryName}`);
       }
 
       // Update repository status to completed
+      console.log(`Updating repository status to COMPLETED for ${repositoryName}`);
+      const completedAt = new Date().toISOString();
       await this.dynamoDBService.updateRepositoryStatus(
         jobId,
         repositoryName,
         JobStatus.COMPLETED,
         {
-          completedAt: new Date().toISOString(),
+          completedAt,
           wereChangesNecessary,
-          pullRequestUrl,
+          // No pull request URL since we're not creating pull requests
+          pullRequestUrl: null,
         }
       );
+      console.log(`Repository status updated to COMPLETED at ${completedAt}`);
 
       return {
         wereChangesNecessary,
-        pullRequestUrl,
+        // No pull request URL since we're not creating pull requests
+        pullRequestUrl: null,
       };
     } catch (error) {
       console.error(`Error processing repository ${repositoryName}:`, error);
 
       // Update repository status to failed
+      console.log(`Updating repository status to FAILED for ${repositoryName}`);
+      const completedAt = new Date().toISOString();
       await this.dynamoDBService.updateRepositoryStatus(
         jobId,
         repositoryName,
         JobStatus.FAILED,
         {
-          completedAt: new Date().toISOString(),
+          completedAt,
           error: error instanceof Error ? error.message : String(error),
+          // No pull request URL since we're not creating pull requests
+          pullRequestUrl: null,
         }
       );
+      console.log(`Repository status updated to FAILED at ${completedAt}`);
 
       throw error;
     } finally {
       // Clean up repository directory
+      console.log(`Cleaning up repository directory for ${repositoryName}...`);
       try {
         await fs.rm(repoDir, { recursive: true, force: true });
+        console.log(`Repository directory ${repoDir} cleaned up successfully`);
       } catch (error) {
         console.error(`Error cleaning up repository directory ${repoDir}:`, error);
+        console.error('Cleanup error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
       }
+      console.log(`Repository processing completed for ${repositoryName} at ${new Date().toISOString()}`);
     }
   }
 }

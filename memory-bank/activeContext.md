@@ -468,4 +468,187 @@ Based on feedback, we've made several important architectural adjustments:
    - How to handle database migrations
    - How to implement blue-green deployments
    - How to monitor deployed resources
+   - How to implement rollback procedures   - Improve Claude prompt engineering
+   - Optimize GitHub API usage
+   - Enhance DynamoDB access patterns
+   - Reduce cold start impact
+
+3. **Enhance User Experience**:
+   - Improve error messaging
+   - Add progress indicators
+   - Implement result filtering and search
+   - Add user preferences
+
+## Active Decisions and Considerations
+
+### Architecture Decisions
+
+1. **Serverless vs. Container-Based**:
+   - **Decision**: Using AWS Batch for job processing and Lambda for API
+   - **Rationale**: AWS Batch can handle longer-running jobs, while Lambda is suitable for API requests
+   - **Considerations**: Need to manage container images and compute environments
+
+2. **Monolithic vs. Microservices**:
+   - **Decision**: Using a microservices approach with separate API and Batch services
+   - **Rationale**: Better separation of concerns, independent scaling, and deployment
+   - **Considerations**: Need to manage inter-service communication and consistency
+
+3. **Data Storage Strategy**:
+   - **Decision**: Using DynamoDB as the primary datastore
+   - **Rationale**: Serverless, scalable, and consistent performance
+   - **Considerations**: Need to design efficient access patterns and manage costs
+
+4. **Authentication Strategy**:
+   - **Decision**: Using a service account with credentials passed as environment variables
+   - **Rationale**: Simplifies authentication flow and aligns with real-world usage
+   - **Considerations**: Need to manage credential security and rotation
+
+5. **Module System**:
+   - **Decision**: Using ESM modules for all packages
+   - **Rationale**: Modern JavaScript standard with better tree-shaking and import/export syntax
+   - **Considerations**: Need to include file extensions in import statements
+
+6. **Frontend Build Tool**:
+   - **Decision**: Using Vite instead of Webpack
+   - **Rationale**: Faster development experience, better performance, and simpler configuration
+   - **Considerations**: Need to ensure compatibility with other tools in the ecosystem
+
+7. **GitHub Integration**:
+   - **Decision**: Using Octokit for API calls and simple-git for repository operations
+   - **Rationale**: Provides comprehensive access to GitHub API and Git operations
+   - **Considerations**: Need to handle authentication, rate limiting, and error recovery
+
+8. **Package Management**:
+   - **Decision**: Using ESLint dependency checks instead of generatePackageJson
+   - **Rationale**: Better practice for library packages, avoids deprecated options
+   - **Considerations**: Need to configure ESLint rules correctly
+
+9. **Claude Integration**:
+   - **Decision**: Using a tool-based approach for Claude interaction
+   - **Rationale**: Provides structured interaction with repositories and better control
+   - **Considerations**: Need to handle tool execution errors and token usage
+
+10. **Claude API Access**:
+    - **Decision**: Using direct API calls with fetch instead of relying solely on the SDK
+    - **Rationale**: Provides better error handling, debugging, and compatibility with newer models
+    - **Considerations**: Need to manage API versioning and headers correctly
+
+11. **Conversation History Storage**:
+    - **Decision**: Using a comprehensive structure to store the full conversation including tool calls
+    - **Rationale**: Provides complete context for understanding AI reasoning and debugging
+    - **Considerations**: Need to manage potentially large conversation histories efficiently
+
+12. **Batch Processing**:
+    - **Decision**: Using a job processor and repository processor for batch processing
+    - **Rationale**: Provides clear separation of concerns and better error isolation
+    - **Considerations**: Need to manage concurrency and resource usage
+
+13. **Frontend Architecture**:
+    - **Decision**: Using React Context API and React Query for state management
+    - **Rationale**: Provides efficient data fetching, caching, and state management
+    - **Considerations**: Need to handle loading and error states consistently
+
+14. **CDK Infrastructure**:
+    - **Decision**: Using a single stack for all resources
+    - **Rationale**: Simplifies deployment and resource management
+    - **Considerations**: Need to manage dependencies between resources
+
+15. **Deployment Strategy**:
+    - **Decision**: Using NX targets for building and deploying
+    - **Rationale**: Provides a consistent and repeatable deployment process
+    - **Considerations**: Need to configure dependencies between targets
+
+16. **Environment Variable Management**:
+    - **Decision**: Using CDK parameters for sensitive values
+    - **Rationale**: Avoids hardcoding sensitive values in the codebase
+    - **Considerations**: Need to pass parameters during deployment
+
+17. **Type Safety in Frontend**:
+    - **Decision**: Using shared types from the shared package
+    - **Rationale**: Ensures consistency between frontend and backend
+    - **Considerations**: Need to handle optional properties and undefined values
+
+### Technical Considerations
+
+1. **GitHub API Integration**:
+   - How to handle rate limiting for large repositories
+   - Strategies for efficient repository scanning
+   - Managing service account credentials securely
+
+2. **Claude 3.7 Integration**:
+   - Tool-based interaction for effective code analysis
+   - Handling large codebases within token limits
+   - Managing autonomous sessions and iteration limits
+   - Tracking token usage for cost management
+   - Handling API errors and rate limits
+   - Path resolution for repository tools
+   - Storing and retrieving complete conversation histories
+
+3. **Job Processing**:
+   - Handling long-running jobs with AWS Batch
+   - Implementing retry and error recovery mechanisms
+   - Managing parallel processing for efficiency
+   - Storing large conversation histories efficiently
+   - Implementing concurrency limits for repository processing
+
+4. **Security Considerations**:
+   - Securing GitHub service account credentials
+   - Limiting repository access to specified patterns
+   - Protecting against injection attacks in generated code
+   - Securing Claude API keys
+
+5. **Frontend Rendering**:
+   - How to display complex tool interactions in a user-friendly way
+   - Providing both technical and simplified views of conversations
+   - Handling large conversation histories efficiently
+   - Implementing responsive design for different screen sizes
+   - Handling optional properties and undefined values
+
+6. **CDK Infrastructure**:
+   - How to structure the CDK stack for maintainability
+   - Managing environment variables across different environments
+   - Configuring IAM roles with least privilege
+   - Setting up proper networking for AWS Batch
+   - Implementing frontend deployment with environment variable injection
+
+### Open Questions
+
+1. **Scope Limitations**:
+   - What specific prompt types should be supported initially?
+   - How complex should the fix generation logic be?
+   - What level of user customization should be supported?
+
+2. **Performance Targets**:
+   - What is an acceptable processing time for a typical repository?
+   - How many concurrent jobs should the system support?
+   - What are the cost implications of different processing strategies?
+
+3. **User Experience**:
+   - How to provide meaningful feedback during long-running jobs
+   - How to present complex code changes in an understandable way
+   - How to handle partial successes or failures
+   - How to display tool interactions in a user-friendly way
+
+4. **Claude Client Integration**:
+   - How to integrate the Claude client with the batch processing framework
+   - How to handle token usage limits and cost management
+   - How to optimize prompt engineering for different types of code analysis
+   - How to handle different Claude models and API versions
+   - How to implement robust error handling and recovery
+   - How to efficiently store and retrieve large conversation histories
+
+5. **Testing Strategy**:
+   - How to test the Claude client without incurring excessive API costs
+   - How to create representative test repositories
+   - How to validate the correctness of code changes
+   - How to simulate error conditions and edge cases
+   - How to test conversation history storage and retrieval
+   - How to test the batch processor without AWS Batch
+   - How to test the frontend without a backend
+
+6. **Deployment Strategy**:
+   - How to manage environment-specific configurations
+   - How to handle database migrations
+   - How to implement blue-green deployments
+   - How to monitor deployed resources
    - How to implement rollback procedures

@@ -58,5 +58,19 @@ export function validateConfig(config: BatchConfig): void {
  * @returns Full table name with prefix
  */
 export function getTableName(tableName: string, config: BatchConfig): string {
-  return `${config.dynamoDb.tablePrefix}-${tableName}`;
+  // Check if environment variables for table names are set
+  if (tableName === 'jobs' && process.env.DYNAMODB_JOBS_TABLE) {
+    console.log(`Using jobs table name from environment: ${process.env.DYNAMODB_JOBS_TABLE}`);
+    return process.env.DYNAMODB_JOBS_TABLE;
+  }
+  
+  if (tableName === 'repositories' && process.env.DYNAMODB_REPOSITORIES_TABLE) {
+    console.log(`Using repositories table name from environment: ${process.env.DYNAMODB_REPOSITORIES_TABLE}`);
+    return process.env.DYNAMODB_REPOSITORIES_TABLE;
+  }
+  
+  // Fall back to constructing the table name from the prefix
+  const constructedName = `${config.dynamoDb.tablePrefix}-${tableName}`;
+  console.log(`Constructed table name: ${constructedName}`);
+  return constructedName;
 }

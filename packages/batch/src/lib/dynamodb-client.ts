@@ -112,6 +112,7 @@ export class DynamoDBService {
    */
   async getRepositoriesForJob(jobId: string): Promise<Repository[]> {
     try {
+      console.log(`Querying repositories table ${this.repositoriesTable} for job ${jobId}`);
       const result = await this.client.send(
         new QueryCommand({
           TableName: this.repositoriesTable,
@@ -122,7 +123,14 @@ export class DynamoDBService {
         })
       );
 
-      return (result.Items || []) as Repository[];
+      const items = result.Items || [];
+      console.log(`Found ${items.length} repositories for job ${jobId}`);
+      
+      if (items.length > 0) {
+        console.log(`Sample repository data:`, JSON.stringify(items[0]));
+      }
+
+      return items as Repository[];
     } catch (error) {
       console.error(`Error getting repositories for job ${jobId}:`, error);
       throw error;
