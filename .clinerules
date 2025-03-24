@@ -1,0 +1,140 @@
+# Cody Batch Project Intelligence
+
+This document captures important patterns, preferences, and project intelligence that help work more effectively with the Cody Batch project.
+
+## Critical Implementation Paths
+
+1. **GitHub Authentication Flow**
+   - OAuth-based authentication is required for GitHub API access
+   - Token must be stored securely and refreshed when needed
+   - All GitHub API calls must include proper authentication
+
+2. **Claude API Integration**
+   - Prompt engineering is critical for accurate code analysis
+   - Responses must be carefully parsed and validated
+   - Token usage must be monitored and optimized
+
+3. **Job Processing Pipeline**
+   - Jobs must be processed asynchronously
+   - Repository processing should be parallelized when possible
+   - Status updates must be frequent and accurate
+
+4. **Pull Request Creation**
+   - PRs should only be created for repositories matching `github.com/liamzdenek/*`
+   - PR title and description should clearly explain the changes
+   - Generated code must be validated before submission
+
+## User Preferences and Workflow
+
+1. **Code Style**
+   - Use TypeScript for all code
+   - Follow 12-Factor app principles
+   - Use CSS modules (no Tailwind or other CSS frameworks)
+   - Use Tanstack Router (not React Router)
+
+2. **Development Workflow**
+   - Use `nx generate` commands for project initialization
+   - Always use `--save` or `--save-dev` for dependencies
+   - No mocking or local development - use actual AWS deployments for testing
+   - No one-off scripts - attach to `nx run` commands
+
+3. **Deployment Preferences**
+   - Deploy using AWS CDK
+   - Use NodejsFunction primitive in CDK
+   - Do not use CDK to compile JavaScript
+   - Use Origin Access Identity to connect CloudFront to the frontend's S3 bucket
+
+4. **Testing Approach**
+   - No e2e testing with Playwright (out of scope)
+   - Use curl and AWS CLI for testing deployments
+
+## Project-Specific Patterns
+
+1. **Monorepo Structure**
+   - All packages must be in the `packages` directory
+   - Single output `dist` directory at the root with subfolders for each package
+   - Shared types must be in a shared package
+
+2. **Error Handling**
+   - No fallbacks - main path works or fails with logging
+   - Always include debug logging for requests and responses
+   - Always include health check endpoints with dependency checks
+
+3. **Configuration Management**
+   - Use environment variables for configuration
+   - Pass location/ARN of AWS resources through environment variables
+   - For frontend code, make environment variables available at build time
+
+4. **Build Process**
+   - After updating build configuration, clean old build artifacts
+   - Rerun the build and validate that artifacts were saved
+   - Do not mark the AWS SDK as external, it should be bundled
+
+## Known Challenges
+
+1. **Lambda Execution Time**
+   - Repository analysis may exceed Lambda timeout limits
+   - Solution: Implement job chunking and continuation
+
+2. **GitHub API Rate Limits**
+   - Large repositories may hit API rate limits
+   - Solution: Implement rate limiting and backoff strategies
+
+3. **Claude Context Window**
+   - Large files may exceed Claude's context window
+   - Solution: Implement file chunking and context management
+
+4. **DynamoDB Query Limitations**
+   - Complex queries may be challenging
+   - Solution: Design efficient access patterns and use GSIs
+
+## Evolution of Project Decisions
+
+1. **Initial Architecture**
+   - Serverless architecture with AWS Lambda
+   - DynamoDB for data storage
+   - GitHub OAuth for authentication
+
+2. **Security Considerations**
+   - Limit PR creation to specific repositories
+   - Secure storage of OAuth tokens
+   - Validate all user inputs
+
+3. **Performance Optimizations**
+   - Parallel processing of repositories
+   - Efficient Claude prompt engineering
+   - Optimized DynamoDB access patterns
+
+## Tool Usage Patterns
+
+1. **AWS CDK**
+   - Use for all infrastructure definition
+   - Deploy infrastructure before application updates
+   - Use CloudFormation for resource provisioning
+
+2. **Nx Commands**
+   - Use `nx generate` for project initialization
+   - Use `nx run` for build and deployment
+   - Use `nx run-many` for multi-package operations
+
+3. **AWS CLI**
+   - Use for testing deployments
+   - Use for monitoring logs
+   - Use for manual operations
+
+4. **GitHub API**
+   - Use for repository operations
+   - Use for pull request creation
+   - Use for authentication
+
+## Important Rules
+
+1. Always implement the FULL code or make the entire file a placeholder
+2. Never generate placeholders in the middle of a program
+3. Always "sleep 10 && [command]" when checking CloudWatch logs
+4. Always include a health check endpoint
+5. Use Zod for schema validation
+6. Put all shared types in a shared package
+7. Always write the .gitignore before installing dependencies
+8. Do not use --routing in nx generate (use Tanstack Router instead)
+9. Save operational learnings to runbook.md
