@@ -187,7 +187,14 @@ export class GitHubClient {
       
       // Clone repository
       const git = simpleGit();
-      const repoUrl = `https://${this.config.token}@github.com/${repoFullName}.git`;
+      
+      // Ensure we don't double-prefix the URL with github.com
+      const normalizedRepoName = repoFullName.startsWith('github.com/')
+        ? repoFullName.substring('github.com/'.length)
+        : repoFullName;
+      
+      const repoUrl = `https://${this.config.token}@github.com/${normalizedRepoName}.git`;
+      console.log(`Cloning from URL: ${repoUrl.replace(this.config.token, '***')}`);
       await git.clone(repoUrl, repoDir);
       
       // Initialize git in the cloned directory

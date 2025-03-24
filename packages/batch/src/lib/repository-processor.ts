@@ -197,12 +197,9 @@ export class RepositoryProcessor {
       }
     );
 
-    // Create temporary directory for repository
-    const repoDir = path.join(
-      os.tmpdir(),
-      `cody-batch-${jobId}-${repositoryName.replace('/', '-')}`
-    );
-
+    // Variable to store repository directory path
+    let repoDir = '';
+    
     try {
       // Clone repository
       // The GitHub client expects just the owner/repo format, not the full github.com URL
@@ -211,8 +208,13 @@ export class RepositoryProcessor {
         ? repositoryName.substring('github.com/'.length)
         : repositoryName;
       
-      console.log(`Cloning repository ${repositoryName} to ${repoDir} (using ${cleanRepoName})`);
-      const { git } = await this.githubClient.cloneRepository(cleanRepoName);
+      // Use the clean repository name (no correction needed as the typo is part of the actual repository name)
+      console.log(`Cloning repository ${repositoryName} (using: ${cleanRepoName})`);
+      const { git, repoPath } = await this.githubClient.cloneRepository(cleanRepoName);
+      
+      // Use the path returned by the GitHub client
+      repoDir = repoPath;
+      console.log(`Repository cloned to ${repoDir}`);
 
       // We're not creating branches or pull requests for now
       console.log(`Skipping branch creation - pull requests are disabled`);
@@ -223,7 +225,7 @@ export class RepositoryProcessor {
       const result = await this.claudeClient.runAutonomousSession(
         repoDir,
         `Repository: ${repositoryName}\n\n${prompt}`,
-        10 // Max iterations
+        25 // Max iterations - increased from 10 to 25 for more thorough analysis
       );
 
       console.log(`Claude analysis completed for ${repositoryName}`);

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from '@tanstack/react-router';
 import styles from './RepositoryDetails.module.css';
 import appStyles from '../../app/app.module.css';
 import { useApiContext } from '../../context/ApiContext';
@@ -8,6 +8,9 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const RepositoryDetails: React.FC = () => {
+  // Get the job ID and repository name from the route parameters
+  const { jobId, repoName } = useParams({ from: '/jobs/$jobId/repositories/$repoName' });
+  
   const { 
     currentRepository, 
     currentRepositoryStatus, 
@@ -15,6 +18,7 @@ const RepositoryDetails: React.FC = () => {
     currentDiffStatus,
     currentClaudeThread,
     currentClaudeThreadStatus,
+    loadRepositoryResult,
     loadRepositoryDiff,
     loadClaudeThread
   } = useApiContext();
@@ -22,16 +26,24 @@ const RepositoryDetails: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'changes' | 'conversation' | 'logs'>('changes');
   const [showDiff, setShowDiff] = useState(false);
 
+  // Load repository details when the component mounts or when jobId/repoName changes
+  useEffect(() => {
+    console.log(`Loading repository details for job ${jobId}, repository ${repoName}`);
+    if (jobId && repoName) {
+      loadRepositoryResult(jobId, repoName);
+    }
+  }, [jobId, repoName, loadRepositoryResult]);
+
   const handleLoadDiff = () => {
-    if (currentRepository) {
-      loadRepositoryDiff(currentRepository.jobId, currentRepository.repositoryName);
+    if (jobId && repoName) {
+      loadRepositoryDiff(jobId, repoName);
       setShowDiff(true);
     }
   };
 
   const handleLoadConversation = (view: 'standard' | 'technical' | 'simplified' = 'standard') => {
-    if (currentRepository) {
-      loadClaudeThread(currentRepository.jobId, currentRepository.repositoryName, view);
+    if (jobId && repoName) {
+      loadClaudeThread(jobId, repoName, view);
     }
   };
 
@@ -187,9 +199,9 @@ const RepositoryDetails: React.FC = () => {
             </div>
           ) : (
             <div className={styles.fileChanges}>
-              {currentRepository.changes.length === 0 ? (
+              {currentRepository.changes && currentRepository.changes.length === 0 ? (
                 <p>No changes were made to this repository.</p>
-              ) : (
+              ) : currentRepository.changes ? (
                 <ul className={styles.fileList}>
                   {currentRepository.changes.map((change, index) => (
                     <li key={index} className={styles.fileItem}>
@@ -206,6 +218,8 @@ const RepositoryDetails: React.FC = () => {
                     </li>
                   ))}
                 </ul>
+              ) : (
+                <p>No changes information available.</p>
               )}
             </div>
           )}
