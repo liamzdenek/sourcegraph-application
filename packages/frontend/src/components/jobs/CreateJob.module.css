@@ -1,0 +1,38 @@
+.promptHelp {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--gray-100);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.promptHelp p {
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.promptHelp p:last-child {
+  margin-bottom: 0;
+}
+
+.repositoriesSelect {
+  min-height: 200px;
+}
+
+.selectHelp {
+  margin-top: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.formActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+@media (max-width: 576px) {
+  .formActions {
+    flex-direction: column;
+  }
+}

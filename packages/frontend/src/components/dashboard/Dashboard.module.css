@@ -1,0 +1,186 @@
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.statCard {
+  background-color: var(--white);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.statValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-xs);
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.section h2 {
+  margin-bottom: var(--spacing-md);
+  font-size: 1.5rem;
+  color: var(--gray-800);
+}
+
+.jobList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.jobCard {
+  background-color: var(--white);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.jobHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.jobHeader h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.jobStatus {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.jobStatus::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.pending {
+  color: var(--status-pending);
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.pending::before {
+  background-color: var(--status-pending);
+}
+
+.inProgress {
+  color: var(--status-processing);
+  background-color: rgba(255, 193, 7, 0.1);
+}
+
+.inProgress::before {
+  background-color: var(--status-processing);
+}
+
+.completed {
+  color: var(--status-completed);
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.completed::before {
+  background-color: var(--status-completed);
+}
+
+.failed {
+  color: var(--status-failed);
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.failed::before {
+  background-color: var(--status-failed);
+}
+
+.cancelled {
+  color: var(--status-cancelled);
+  background-color: rgba(108, 117, 125, 0.1);
+}
+
+.cancelled::before {
+  background-color: var(--status-cancelled);
+}
+
+.jobMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.statusCard {
+  background-color: var(--white);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+}
+
+.statusIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--success-color);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--spacing-sm);
+  font-size: 1.25rem;
+}
+
+.statusLabel {
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.createJobButton {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-xl);
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.errorContainer {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: var(--danger-color);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}

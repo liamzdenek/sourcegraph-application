@@ -1,0 +1,199 @@
+.actionsContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.filterContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.jobsTable {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.jobsTable table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--white);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.jobsTable th,
+.jobsTable td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.jobsTable th {
+  background-color: var(--gray-100);
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.jobsTable tr:last-child td {
+  border-bottom: none;
+}
+
+.jobsTable tr:hover {
+  background-color: var(--gray-50);
+}
+
+.jobName a {
+  font-weight: 500;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.jobName a:hover {
+  text-decoration: underline;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.statusPending {
+  color: var(--status-pending);
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.statusPending::before {
+  background-color: var(--status-pending);
+}
+
+.statusProcessing {
+  color: var(--status-processing);
+  background-color: rgba(255, 193, 7, 0.1);
+}
+
+.statusProcessing::before {
+  background-color: var(--status-processing);
+}
+
+.statusCompleted {
+  color: var(--status-completed);
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.statusCompleted::before {
+  background-color: var(--status-completed);
+}
+
+.statusFailed {
+  color: var(--status-failed);
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.statusFailed::before {
+  background-color: var(--status-failed);
+}
+
+.statusCancelled {
+  color: var(--status-cancelled);
+  background-color: rgba(108, 117, 125, 0.1);
+}
+
+.statusCancelled::before {
+  background-color: var(--status-cancelled);
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.progressBar {
+  flex: 1;
+  height: 8px;
+  background-color: var(--gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--primary-color);
+  border-radius: 4px;
+  transition: width var(--transition-normal);
+}
+
+.progressText {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.emptyState {
+  background-color: var(--gray-100);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--gray-600);
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-xl);
+  gap: var(--spacing-xs);
+}
+
+@media (max-width: 768px) {
+  .actionsContainer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+  
+  .jobsTable th:nth-child(2),
+  .jobsTable td:nth-child(2),
+  .jobsTable th:nth-child(5),
+  .jobsTable td:nth-child(5) {
+    display: none;
+  }
+  
+  .actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 576px) {
+  .jobsTable th:nth-child(4),
+  .jobsTable td:nth-child(4) {
+    display: none;
+  }
+}
