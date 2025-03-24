@@ -61,6 +61,12 @@
         }
       }
     },
+    "build-frontend": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "API_URL=$(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --region us-west-2 --query \"Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue\" --output text) && VITE_API_BASE_URL=$API_URL npx nx build frontend"
+      }
+    },
     "deploy": {
       "executor": "nx:run-commands",
       "options": {

@@ -1,179 +1,202 @@
-/**
- * Job status enum
- */
 export enum JobStatus {
   PENDING = 'pending',
-  PROCESSING = 'processing',
+  PROCESSING = 'in-progress',
   COMPLETED = 'completed',
-  FAILED = 'failed',
   CANCELLED = 'cancelled',
+  FAILED = 'failed'
 }
 
-/**
- * Repository information
- */
+export enum RepositoryStatus {
+  PENDING = 'pending',
+  PROCESSING = 'in-progress',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
+}
+
+export interface Job {
+  jobId: string;
+  name: string;
+  description?: string;
+  type: string;
+  prompt?: string;
+  status: string; // Use string instead of enum to match API contract
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string | null;
+  repositoryCount: number;
+  completedCount: number;
+  createPullRequests?: boolean;
+}
+
 export interface Repository {
   id: string;
   name: string;
   fullName: string;
-  description: string | null;
+  description?: string;
   url: string;
   isPrivate: boolean;
-  owner: {
-    login: string;
-    id: string;
-  };
+  owner: string;
+  status: string; // Use string instead of enum to match API contract
+  pullRequestUrl?: string | null;
+  wereChangesNecessary?: boolean | null;
+  completedAt?: string | null;
+  logs?: Array<{
+    timestamp: string;
+    message: string;
+    level: string;
+  }>;
 }
 
-/**
- * Job repository result
- */
-export interface RepositoryResult {
-  repositoryId: string;
-  repositoryName: string;
-  status: JobStatus;
-  wereChangesNecessary: boolean;
-  message: string;
-  pullRequestUrl?: string;
-  diffUrl?: string;
-  claudeThreadUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * Job information
- */
-export interface Job {
-  id: string;
-  userId: string;
-  prompt: string;
-  repositories: Repository[];
-  status: JobStatus;
-  results: RepositoryResult[];
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-}
-
-/**
- * Job creation request
- */
-export interface CreateJobRequest {
-  prompt: string;
-  repositoryIds: string[];
-}
-
-/**
- * Job creation response
- */
-export interface CreateJobResponse {
-  jobId: string;
-  status: JobStatus;
-  createdAt: string;
-}
-
-/**
- * Job list response
- */
-export interface JobListResponse {
-  jobs: Job[];
-  total: number;
-}
-
-/**
- * Job detail response
- */
-export interface JobDetailResponse {
-  job: Job;
-}
-
-/**
- * Repository list response
- */
-export interface RepositoryListResponse {
-  repositories: Repository[];
-  total: number;
-}
-
-/**
- * Error response
- */
 export interface ErrorResponse {
-  error: {
+  message: string;
+  code: string;
+  details?: Record<string, unknown>;
+  error?: {
     message: string;
     code: string;
   };
 }
 
-/**
- * Claude API response
- */
-export interface ClaudeResponse {
-  id: string;
-  type: string;
-  role: string;
-  content: {
-    type: string;
-    text: string;
-  }[];
+export interface ApiConfig {
+  port: number;
+  environment?: 'development' | 'production' | 'test';
+  dynamodbJobsTable?: string;
+  dynamodbRepositoriesTable?: string;
+  githubToken?: string;
+  allowedRepositories?: string;
+  awsBatchJobQueue?: string;
+  awsBatchJobDefinition?: string;
+  dynamoDb?: {
+    region: string;
+    endpoint?: string;
+    tablePrefix: string;
+  };
+  github?: {
+    token: string;
+    allowedRepositories: string[];
+    baseUrl?: string;
+  };
+  claude?: {
+    apiKey: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
-/**
- * Claude message thread
- */
-export interface ClaudeThread {
-  id: string;
-  messages: ClaudeResponse[];
+export interface BatchConfig {
+  dynamodbJobsTable?: string;
+  dynamodbRepositoriesTable?: string;
+  githubToken?: string;
+  claudeApiKey?: string;
+  allowedRepositories?: string;
+  jobQueue?: string;
+  jobDefinition?: string;
+  region?: string;
+  dynamoDb?: {
+    region: string;
+    endpoint?: string;
+    tablePrefix: string;
+  };
+  github?: {
+    token: string;
+    allowedRepositories: string[];
+    baseUrl?: string;
+    tempDir?: string;
+  };
+  claude?: {
+    apiKey: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
-/**
- * GitHub client configuration
- */
-export interface GitHubClientConfig {
-  token: string;
-  allowedRepositories: string[];
-  baseUrl?: string;
-  tempDir?: string;
-}
-
-/**
- * Claude client configuration
- */
 export interface ClaudeClientConfig {
   apiKey: string;
-  model: string;
+  model?: string;
   maxTokens?: number;
   temperature?: number;
 }
 
-/**
- * API configuration
- */
-export interface ApiConfig {
-  port: number;
-  environment: 'development' | 'production' | 'test';
-  dynamoDb: {
-    region: string;
-    endpoint?: string;
-    tablePrefix: string;
+export interface HealthResponse {
+  status: string;
+  version: string;
+  timestamp: string;
+  dependencies: {
+    dynamodb: string;
+    github: string;
+    claude: string;
   };
-  github: GitHubClientConfig;
-  claude: ClaudeClientConfig;
 }
 
-/**
- * Batch configuration
- */
-export interface BatchConfig {
-  jobQueue: string;
-  jobDefinition: string;
-  region: string;
-  dynamoDb: {
-    region: string;
-    endpoint?: string;
-    tablePrefix: string;
+export interface JobDetails extends Job {
+  repositories: Array<{
+    name: string;
+    status: string;
+    pullRequestUrl: string | null;
+    wereChangesNecessary: boolean | null;
+    completedAt: string | null;
+  }>;
+}
+
+export interface CreateJobRequest {
+  name: string;
+  description?: string;
+  type: string;
+  prompt: string;
+  repositories: string[];
+  createPullRequests: boolean;
+}
+
+export interface RepositoryResult {
+  jobId: string;
+  repositoryName: string;
+  status: string;
+  pullRequestUrl?: string | null;
+  wereChangesNecessary?: boolean | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  changes: Array<{
+    file: string;
+    diff: string;
+  }>;
+  claudeConversation?: {
+    threadId: string;
+    messages: Array<{
+      role: string;
+      content: string | Record<string, any>;
+      timestamp: string;
+      type: string;
+    }>;
+    tokenUsage: {
+      input: number;
+      output: number;
+      cacheCreation: number;
+      cacheRead: number;
+      total: number;
+    };
   };
-  github: GitHubClientConfig;
-  claude: ClaudeClientConfig;
+  logs?: Array<{
+    timestamp: string;
+    level: string;
+    message: string;
+  }>;
+}
+
+export interface ClaudeThread {
+  threadId: string;
+  messages: Array<{
+    role: string;
+    content: string | Record<string, any>;
+    timestamp: string;
+    type: string;
+  }>;
+  tokenUsage: {
+    input: number;
+    output: number;
+    cacheCreation: number;
+    cacheRead: number;
+    total: number;
+  };
 }

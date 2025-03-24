@@ -39,12 +39,14 @@ interface ApiContextType {
   jobsStatus: Status;
   jobsError: Error | null;
   loadJobs: (page?: number, perPage?: number, status?: JobStatus) => void;
+  refreshJobs: () => void;
   
   // Job details
   currentJob: JobDetails | undefined;
   currentJobStatus: Status;
   currentJobError: Error | null;
   loadJobDetails: (jobId: string) => void;
+  refreshCurrentJob: () => void;
   
   // Create job
   createJob: (job: CreateJobRequest) => Promise<JobDetails>;
@@ -114,6 +116,7 @@ export function ApiProvider({ children }: ApiProviderProps) {
     data: repositoriesData,
     status: repositoriesQueryStatus,
     error: repositoriesError,
+    refetch: refreshRepositories
   } = useQuery({
     queryKey: ['repositories', repositoriesParams],
     queryFn: () => apiClient.getRepositories(
@@ -139,6 +142,7 @@ export function ApiProvider({ children }: ApiProviderProps) {
     data: jobsData,
     status: jobsQueryStatus,
     error: jobsError,
+    refetch: refreshJobs
   } = useQuery({
     queryKey: ['jobs', jobsParams],
     queryFn: () => apiClient.getJobs(
@@ -161,6 +165,7 @@ export function ApiProvider({ children }: ApiProviderProps) {
     data: currentJob,
     status: currentJobQueryStatus,
     error: currentJobError,
+    refetch: refreshCurrentJob
   } = useQuery({
     queryKey: ['job', currentJobId],
     queryFn: () => apiClient.getJobDetails(currentJobId!),
@@ -305,12 +310,14 @@ export function ApiProvider({ children }: ApiProviderProps) {
     jobsStatus: mapStatus(jobsQueryStatus),
     jobsError: jobsError as Error | null,
     loadJobs,
+    refreshJobs,
     
     // Job details
     currentJob,
     currentJobStatus: mapStatus(currentJobQueryStatus),
     currentJobError: currentJobError as Error | null,
     loadJobDetails,
+    refreshCurrentJob,
     
     // Create job
     createJob,
@@ -345,12 +352,15 @@ export function ApiProvider({ children }: ApiProviderProps) {
 }
 
 // Hook for using the API context
-export function useApi() {
+export function useApiContext() {
   const context = useContext(ApiContext);
   
   if (context === undefined) {
-    throw new Error('useApi must be used within an ApiProvider');
+    throw new Error('useApiContext must be used within an ApiProvider');
   }
   
   return context;
 }
+
+// For backward compatibility
+export const useApi = useApiContext;

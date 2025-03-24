@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "./index.js",
-  "types": "./index.d.ts",
+  "main": "../../dist/packages/shared/index.js",
+  "types": "../../dist/packages/shared/index.d.ts",
   "dependencies": {}
 }

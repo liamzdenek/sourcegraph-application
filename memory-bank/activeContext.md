@@ -87,6 +87,13 @@ Based on feedback, we've made several important architectural adjustments:
     - NX targets for building and deploying the infrastructure
     - AWS profile "lz-demos" for deployment
 
+22. **Frontend Type Safety Improvements**: Enhanced the frontend components with better type safety:
+    - Updated API service layer to use shared types from the shared package
+    - Fixed type issues in components to handle optional properties
+    - Added null checks and fallbacks for potentially undefined properties
+    - Improved error handling in components
+    - Fixed navigation issues with Tanstack Router
+
 ## Next Steps
 
 ### Immediate Tasks (Next 1-2 Days)
@@ -162,6 +169,7 @@ Based on feedback, we've made several important architectural adjustments:
     - Add CSS modules for component-specific styling ✅
     - Implement global CSS variables ✅
     - Add responsive design ✅
+    - Fix type issues and handle optional properties ✅
 
 11. **Implement CDK Package**:
     - Set up package structure ✅
@@ -171,6 +179,13 @@ Based on feedback, we've made several important architectural adjustments:
     - Set up IAM roles and permissions
     - Implement frontend deployment with environment variable injection
     - Create NX targets for building and deploying
+
+12. **Build and Deploy the Application**:
+    - Install missing dependencies
+    - Fix remaining type issues
+    - Build the application
+    - Deploy to AWS
+    - Test the deployed application
 
 ### Short-Term Goals (Next Week)
 
@@ -311,6 +326,11 @@ Based on feedback, we've made several important architectural adjustments:
     - **Rationale**: Avoids hardcoding sensitive values in the codebase
     - **Considerations**: Need to pass parameters during deployment
 
+17. **Type Safety in Frontend**:
+    - **Decision**: Using shared types from the shared package
+    - **Rationale**: Ensures consistency between frontend and backend
+    - **Considerations**: Need to handle optional properties and undefined values
+
 ### Technical Considerations
 
 1. **GitHub API Integration**:
@@ -345,6 +365,7 @@ Based on feedback, we've made several important architectural adjustments:
    - Providing both technical and simplified views of conversations
    - Handling large conversation histories efficiently
    - Implementing responsive design for different screen sizes
+   - Handling optional properties and undefined values
 
 6. **CDK Infrastructure**:
    - How to structure the CDK stack for maintainability

@@ -1,58 +1,67 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { useApi } from '../../context/ApiContext';
-import { JobStatus } from '../../services/api';
 import styles from './JobsList.module.css';
 import appStyles from '../../app/app.module.css';
+import { useApiContext } from '../../context/ApiContext';
+import { formatDate } from 'shared';
 
-export function JobsList() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [statusFilter, setStatusFilter] = useState<JobStatus | undefined>(undefined);
-  
+const JobsList: React.FC = () => {
   const { 
     jobs, 
     jobsStatus, 
-    jobsError, 
-    loadJobs,
+    refreshJobs,
     cancelJob,
-    cancelJobStatus,
-    cancelJobError
-  } = useApi();
-  
-  // Load jobs on component mount and when pagination/filter changes
-  useEffect(() => {
-    loadJobs(currentPage, itemsPerPage, statusFilter);
-  }, [loadJobs, currentPage, itemsPerPage, statusFilter]);
-  
-  // Handle status filter change
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setStatusFilter(value === 'all' ? undefined : value as JobStatus);
-    setCurrentPage(1); // Reset to first page when filter changes
-  };
-  
-  // Handle job cancellation
-  const handleCancelJob = async (jobId: string) => {
-    if (confirm('Are you sure you want to cancel this job?')) {
-      try {
-        await cancelJob(jobId);
-        // Job will be updated in the list automatically due to query invalidation
-      } catch (error) {
-        console.error('Failed to cancel job:', error);
-      }
+    cancelJobStatus
+  } = useApiContext();
+
+  const [sortBy, setSortBy] = useState<'createdAt' | 'status'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [showConfirmCancel, setShowConfirmCancel] = useState<string | null>(null);
+
+  const handleSort = (field: 'createdAt' | 'status') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
     }
   };
-  
-  // Get status class for styling
-  const getStatusClass = (status: JobStatus): string => {
+
+  const handleStatusFilter = (status: string | null) => {
+    setStatusFilter(status);
+  };
+
+  const handleCancelJob = (jobId: string) => {
+    cancelJob(jobId);
+    setShowConfirmCancel(null);
+  };
+
+  const sortedJobs = jobs ? [...jobs].sort((a, b) => {
+    if (sortBy === 'createdAt') {
+      return sortOrder === 'asc' 
+        ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    } else {
+      return sortOrder === 'asc'
+        ? a.status.localeCompare(b.status)
+        : b.status.localeCompare(a.status);
+    }
+  }) : [];
+
+  const filteredJobs = statusFilter
+    ? sortedJobs.filter(job => job.status === statusFilter)
+    : sortedJobs;
+
+  const getStatusClass = (status: string) => {
     switch (status) {
-      case 'pending':
-        return styles.statusPending;
-      case 'processing':
-        return styles.statusProcessing;
       case 'completed':
         return styles.statusCompleted;
+      case 'in-progress':
+      case 'processing':
+        return styles.statusProcessing;
+      case 'pending':
+        return styles.statusPending;
       case 'failed':
         return styles.statusFailed;
       case 'cancelled':
@@ -61,147 +70,192 @@ export function JobsList() {
         return '';
     }
   };
-  
-  // Format date
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-  
-  // Loading state
-  if (jobsStatus === 'loading') {
-    return (
-      <div className={appStyles.page}>
+
+  return (
+    <div className={styles.jobsList}>
+      <div className={styles.header}>
         <h1>Jobs</h1>
-        <div className={styles.loadingContainer}>
-          <p>Loading jobs...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Error state
-  if (jobsStatus === 'error') {
-    return (
-      <div className={appStyles.page}>
-        <h1>Jobs</h1>
-        <div className={appStyles.alertDanger}>
-          <p>Error loading jobs: {jobsError?.message}</p>
-          <button 
-            className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-            onClick={() => loadJobs(currentPage, itemsPerPage, statusFilter)}
+        <div className={styles.actions}>
+          <Link 
+            to="/jobs/create" 
+            className={`${appStyles.button} ${appStyles.primary}`}
           >
-            Retry
+            Create New Job
+          </Link>
+          <button 
+            className={`${appStyles.button} ${appStyles.secondary}`}
+            onClick={() => refreshJobs()}
+          >
+            Refresh
           </button>
         </div>
       </div>
-    );
-  }
-  
-  return (
-    <div className={appStyles.page}>
-      <h1>Jobs</h1>
-      
-      <div className={styles.actionsContainer}>
-        {/* Status filter */}
-        <div className={styles.filterContainer}>
-          <label htmlFor="statusFilter" className={appStyles.label}>
-            Status:
-          </label>
-          <select
-            id="statusFilter"
-            value={statusFilter || 'all'}
-            onChange={handleStatusFilterChange}
-            className={appStyles.select}
+
+      <div className={styles.filters}>
+        <div className={styles.filterGroup}>
+          <span>Status:</span>
+          <button 
+            className={`${appStyles.button} ${appStyles.small} ${statusFilter === null ? appStyles.active : ''}`}
+            onClick={() => handleStatusFilter(null)}
           >
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            All
+          </button>
+          <button 
+            className={`${appStyles.button} ${appStyles.small} ${statusFilter === 'pending' ? appStyles.active : ''}`}
+            onClick={() => handleStatusFilter('pending')}
+          >
+            Pending
+          </button>
+          <button 
+            className={`${appStyles.button} ${appStyles.small} ${statusFilter === 'in-progress' ? appStyles.active : ''}`}
+            onClick={() => handleStatusFilter('in-progress')}
+          >
+            In Progress
+          </button>
+          <button 
+            className={`${appStyles.button} ${appStyles.small} ${statusFilter === 'completed' ? appStyles.active : ''}`}
+            onClick={() => handleStatusFilter('completed')}
+          >
+            Completed
+          </button>
+          <button 
+            className={`${appStyles.button} ${appStyles.small} ${statusFilter === 'failed' ? appStyles.active : ''}`}
+            onClick={() => handleStatusFilter('failed')}
+          >
+            Failed
+          </button>
+          <button 
+            className={`${appStyles.button} ${appStyles.small} ${statusFilter === 'cancelled' ? appStyles.active : ''}`}
+            onClick={() => handleStatusFilter('cancelled')}
+          >
+            Cancelled
+          </button>
         </div>
-        
-        {/* Create job button */}
-        <Link 
-          to="/jobs/create" 
-          className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-        >
-          Create New Job
-        </Link>
       </div>
-      
-      {/* Jobs list */}
-      {jobs.length === 0 ? (
-        <div className={styles.emptyState}>
-          <p>No jobs found.</p>
-        </div>
-      ) : (
-        <div className={styles.jobsTable}>
-          <table>
+
+      <div className={styles.tableContainer}>
+        {jobsStatus === 'loading' && (
+          <div className={styles.loading}>Loading jobs...</div>
+        )}
+        
+        {jobsStatus === 'error' && (
+          <div className={styles.error}>
+            <p>Error loading jobs</p>
+            <button 
+              className={`${appStyles.button} ${appStyles.small}`}
+              onClick={() => refreshJobs()}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        
+        {jobsStatus === 'success' && filteredJobs.length === 0 && (
+          <div className={styles.empty}>
+            <p>No jobs found</p>
+            <Link 
+              to="/jobs/create" 
+              className={`${appStyles.button} ${appStyles.primary}`}
+            >
+              Create Your First Job
+            </Link>
+          </div>
+        )}
+        
+        {jobsStatus === 'success' && filteredJobs.length > 0 && (
+          <table className={styles.table}>
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Type</th>
-                <th>Status</th>
+                <th 
+                  className={styles.sortable}
+                  onClick={() => handleSort('status')}
+                >
+                  Status
+                  {sortBy === 'status' && (
+                    <span className={styles.sortIcon}>
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </th>
+                <th 
+                  className={styles.sortable}
+                  onClick={() => handleSort('createdAt')}
+                >
+                  Created
+                  {sortBy === 'createdAt' && (
+                    <span className={styles.sortIcon}>
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </th>
                 <th>Progress</th>
-                <th>Created</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {jobs.map(job => (
+              {filteredJobs.map(job => (
                 <tr key={job.jobId}>
-                  <td className={styles.jobName}>
+                  <td>
                     <Link to={`/jobs/${job.jobId}`}>{job.name}</Link>
                   </td>
                   <td>{job.type}</td>
                   <td>
                     <span className={`${styles.status} ${getStatusClass(job.status)}`}>
-                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                      {job.status}
                     </span>
                   </td>
+                  <td>{formatDate(job.createdAt)}</td>
                   <td>
                     <div className={styles.progressContainer}>
-                      <div className={styles.progressBar}>
-                        <div 
-                          className={styles.progressFill} 
-                          style={{ 
-                            width: `${job.repositoryCount > 0 
-                              ? (job.completedCount / job.repositoryCount) * 100 
-                              : 0}%` 
-                          }}
-                        />
-                      </div>
+                      <div 
+                        className={styles.progressBar}
+                        style={{
+                          width: `${job.repositoryCount > 0 
+                            ? (job.completedCount / job.repositoryCount) * 100 
+                            : 0}%`
+                        }}
+                      ></div>
                       <span className={styles.progressText}>
                         {job.completedCount}/{job.repositoryCount}
                       </span>
                     </div>
                   </td>
-                  <td>{formatDate(job.createdAt)}</td>
                   <td>
-                    <div className={styles.actions}>
+                    <div className={styles.actionButtons}>
                       <Link 
                         to={`/jobs/${job.jobId}`}
-                        className={`${appStyles.button} ${appStyles.buttonSecondary}`}
+                        className={`${appStyles.button} ${appStyles.small}`}
                       >
                         View
                       </Link>
-                      {(job.status === 'pending' || job.status === 'processing') && (
-                        <button 
-                          onClick={() => handleCancelJob(job.jobId)}
-                          className={`${appStyles.button} ${appStyles.buttonDanger}`}
-                          disabled={cancelJobStatus === 'loading'}
-                        >
-                          Cancel
-                        </button>
+                      {(job.status === 'pending' || job.status === 'in-progress') && (
+                        showConfirmCancel === job.jobId ? (
+                          <div className={styles.confirmCancel}>
+                            <span>Cancel?</span>
+                            <button 
+                              className={`${appStyles.button} ${appStyles.small} ${appStyles.danger}`}
+                              onClick={() => handleCancelJob(job.jobId)}
+                              disabled={cancelJobStatus === 'loading'}
+                            >
+                              Yes
+                            </button>
+                            <button 
+                              className={`${appStyles.button} ${appStyles.small}`}
+                              onClick={() => setShowConfirmCancel(null)}
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            className={`${appStyles.button} ${appStyles.small} ${appStyles.danger}`}
+                            onClick={() => setShowConfirmCancel(job.jobId)}
+                          >
+                            Cancel
+                          </button>
+                        )
                       )}
                     </div>
                   </td>
@@ -209,13 +263,10 @@ export function JobsList() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-      
-      {/* Pagination */}
-      {/* We would add pagination controls here based on the pagination data from the API */}
+        )}
+      </div>
     </div>
   );
-}
+};
 
 export default JobsList;

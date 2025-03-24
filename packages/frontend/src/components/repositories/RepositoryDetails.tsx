@@ -1,276 +1,254 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from '@tanstack/react-router';
-import { useApi } from '../../context/ApiContext';
+import React, { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import styles from './RepositoryDetails.module.css';
 import appStyles from '../../app/app.module.css';
+import { useApiContext } from '../../context/ApiContext';
+import { formatDate } from 'shared';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-export function RepositoryDetails() {
-  const { jobId, repoName } = useParams({ from: '/jobs/$jobId/repositories/$repoName' });
-  const decodedRepoName = decodeURIComponent(repoName);
-  
-  const [activeTab, setActiveTab] = useState<'changes' | 'conversation' | 'logs'>('changes');
-  const [viewMode, setViewMode] = useState<'standard' | 'technical' | 'simplified'>('standard');
-  
+const RepositoryDetails: React.FC = () => {
   const { 
-    currentJob,
-    currentJobStatus,
-    currentJobError,
-    loadJobDetails,
-    currentRepository,
-    currentRepositoryStatus,
-    currentRepositoryError,
-    loadRepositoryResult,
+    currentRepository, 
+    currentRepositoryStatus, 
     currentDiff,
     currentDiffStatus,
-    currentDiffError,
-    loadRepositoryDiff,
     currentClaudeThread,
     currentClaudeThreadStatus,
-    currentClaudeThreadError,
+    loadRepositoryDiff,
     loadClaudeThread
-  } = useApi();
-  
-  // Load job details and repository result on component mount
-  useEffect(() => {
-    if (jobId) {
-      loadJobDetails(jobId);
+  } = useApiContext();
+
+  const [activeTab, setActiveTab] = useState<'changes' | 'conversation' | 'logs'>('changes');
+  const [showDiff, setShowDiff] = useState(false);
+
+  const handleLoadDiff = () => {
+    if (currentRepository) {
+      loadRepositoryDiff(currentRepository.jobId, currentRepository.repositoryName);
+      setShowDiff(true);
     }
-    
-    if (jobId && repoName) {
-      loadRepositoryResult(jobId, decodedRepoName);
-    }
-  }, [jobId, repoName, decodedRepoName, loadJobDetails, loadRepositoryResult]);
-  
-  // Load diff when tab is changes
-  useEffect(() => {
-    if (jobId && repoName && activeTab === 'changes') {
-      loadRepositoryDiff(jobId, decodedRepoName);
-    }
-  }, [jobId, repoName, decodedRepoName, activeTab, loadRepositoryDiff]);
-  
-  // Load Claude thread when tab is conversation
-  useEffect(() => {
-    if (jobId && repoName && activeTab === 'conversation') {
-      loadClaudeThread(jobId, decodedRepoName, viewMode);
-    }
-  }, [jobId, repoName, decodedRepoName, activeTab, viewMode, loadClaudeThread]);
-  
-  // Format date
-  const formatDate = (dateString: string | null): string => {
-    if (!dateString) return 'N/A';
-    
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
-  
-  // Loading state
-  if (currentRepositoryStatus === 'loading' || currentJobStatus === 'loading') {
+
+  const handleLoadConversation = (view: 'standard' | 'technical' | 'simplified' = 'standard') => {
+    if (currentRepository) {
+      loadClaudeThread(currentRepository.jobId, currentRepository.repositoryName, view);
+    }
+  };
+
+  if (currentRepositoryStatus === 'loading') {
     return (
-      <div className={appStyles.page}>
-        <h1>Repository Details</h1>
-        <div className={styles.loadingContainer}>
-          <p>Loading repository details...</p>
-        </div>
+      <div className={styles.loading}>
+        <p>Loading repository details...</p>
       </div>
     );
   }
-  
-  // Error state
-  if (currentRepositoryStatus === 'error' || currentJobStatus === 'error') {
+
+  if (currentRepositoryStatus === 'error') {
     return (
-      <div className={appStyles.page}>
-        <h1>Repository Details</h1>
-        <div className={appStyles.alertDanger}>
-          <p>
-            Error loading repository details: 
-            {currentRepositoryError?.message || currentJobError?.message}
-          </p>
-          <button 
-            className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-            onClick={() => {
-              if (jobId) loadJobDetails(jobId);
-              if (jobId && repoName) loadRepositoryResult(jobId, decodedRepoName);
-            }}
-          >
-            Retry
-          </button>
-        </div>
+      <div className={styles.error}>
+        <p>Error loading repository details</p>
+        <Link 
+          to="/jobs" 
+          className={`${appStyles.button} ${appStyles.primary}`}
+        >
+          Back to Jobs
+        </Link>
       </div>
     );
   }
-  
-  // No repository found
-  if (!currentRepository || !currentJob) {
+
+  if (!currentRepository) {
     return (
-      <div className={appStyles.page}>
-        <h1>Repository Details</h1>
-        <div className={appStyles.alertWarning}>
-          <p>Repository not found.</p>
-          <Link 
-            to={`/jobs/${jobId}`} 
-            className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-          >
-            Back to Job
-          </Link>
-        </div>
+      <div className={styles.notFound}>
+        <p>Repository not found</p>
+        <Link 
+          to="/jobs" 
+          className={`${appStyles.button} ${appStyles.primary}`}
+        >
+          Back to Jobs
+        </Link>
       </div>
     );
   }
-  
-  // Get repository status from job
-  const repoStatus = currentJob.repositories.find(repo => repo.name === decodedRepoName);
-  
+
   return (
-    <div className={appStyles.page}>
+    <div className={styles.repositoryDetails}>
       <div className={styles.header}>
-        <h1>{decodedRepoName}</h1>
+        <h1>{currentRepository.repositoryName}</h1>
         <div className={styles.actions}>
           <Link 
-            to={`/jobs/${jobId}`} 
-            className={`${appStyles.button} ${appStyles.buttonSecondary}`}
+            to={`/jobs/${currentRepository.jobId}`}
+            className={`${appStyles.button} ${appStyles.text}`}
           >
             Back to Job
           </Link>
-          {repoStatus?.pullRequestUrl && (
-            <a 
-              href={repoStatus.pullRequestUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-            >
-              View Pull Request
-            </a>
-          )}
         </div>
       </div>
-      
-      <div className={styles.infoCard}>
-        <div className={styles.infoGrid}>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Status:</span>
-            <span>{currentRepository.status}</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Changes Made:</span>
-            <span>{currentRepository.wereChangesNecessary ? 'Yes' : 'No'}</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Started:</span>
-            <span>{formatDate(currentRepository.startedAt)}</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Completed:</span>
-            <span>{formatDate(currentRepository.completedAt)}</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Files Changed:</span>
-            <span>{currentRepository.changes.length}</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Pull Request:</span>
-            <span>
-              {currentRepository.pullRequestUrl ? (
-                <a 
-                  href={currentRepository.pullRequestUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  View PR
-                </a>
-              ) : 'N/A'}
-            </span>
-          </div>
+
+      <div className={styles.infoGrid}>
+        <div className={styles.infoItem}>
+          <span className={styles.infoLabel}>Status:</span>
+          <span>{currentRepository.status || 'N/A'}</span>
+        </div>
+        <div className={styles.infoItem}>
+          <span className={styles.infoLabel}>Changes Necessary:</span>
+          <span>{currentRepository.wereChangesNecessary ? 'Yes' : 'No'}</span>
+        </div>
+        <div className={styles.infoItem}>
+          <span className={styles.infoLabel}>Started:</span>
+          <span>{formatDate(currentRepository.startedAt || null)}</span>
+        </div>
+        <div className={styles.infoItem}>
+          <span className={styles.infoLabel}>Completed:</span>
+          <span>{formatDate(currentRepository.completedAt || null)}</span>
+        </div>
+        <div className={styles.infoItem}>
+          <span className={styles.infoLabel}>Pull Request:</span>
+          <span>
+            {currentRepository.pullRequestUrl ? (
+              <a 
+                href={currentRepository.pullRequestUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={styles.link}
+              >
+                View PR
+              </a>
+            ) : (
+              'N/A'
+            )}
+          </span>
         </div>
       </div>
-      
+
       <div className={styles.tabs}>
         <button 
-          className={`${styles.tab} ${activeTab === 'changes' ? styles.activeTab : ''}`}
+          className={`${styles.tab} ${activeTab === 'changes' ? styles.active : ''}`}
           onClick={() => setActiveTab('changes')}
         >
           Changes
         </button>
         <button 
-          className={`${styles.tab} ${activeTab === 'conversation' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('conversation')}
+          className={`${styles.tab} ${activeTab === 'conversation' ? styles.active : ''}`}
+          onClick={() => {
+            setActiveTab('conversation');
+            if (!currentClaudeThread) {
+              handleLoadConversation();
+            }
+          }}
         >
           Claude Conversation
         </button>
-        <button 
-          className={`${styles.tab} ${activeTab === 'logs' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('logs')}
-        >
-          Logs
-        </button>
+        {currentRepository.logs && currentRepository.logs.length > 0 && (
+          <button 
+            className={`${styles.tab} ${activeTab === 'logs' ? styles.active : ''}`}
+            onClick={() => setActiveTab('logs')}
+          >
+            Logs
+          </button>
+        )}
       </div>
-      
-      <div className={styles.tabContent}>
-        {activeTab === 'changes' && (
-          <div className={styles.changesTab}>
-            <h2>Changes</h2>
-            {currentDiffStatus === 'loading' ? (
-              <p>Loading diff...</p>
-            ) : currentDiffStatus === 'error' ? (
-              <div className={appStyles.alertDanger}>
-                <p>Error loading diff: {currentDiffError?.message}</p>
-                <button 
-                  className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-                  onClick={() => {
-                    if (jobId && repoName) loadRepositoryDiff(jobId, decodedRepoName);
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
-            ) : currentDiff ? (
-              <pre className={styles.diff}>{currentDiff}</pre>
-            ) : (
-              <p>No changes were made to this repository.</p>
+
+      {activeTab === 'changes' && (
+        <div className={styles.changesTab}>
+          <div className={styles.changesHeader}>
+            <h2>File Changes</h2>
+            {!showDiff && (
+              <button 
+                className={`${appStyles.button} ${appStyles.small}`}
+                onClick={handleLoadDiff}
+              >
+                View Full Diff
+              </button>
             )}
           </div>
-        )}
-        
-        {activeTab === 'conversation' && (
-          <div className={styles.conversationTab}>
-            <div className={styles.conversationHeader}>
-              <h2>Claude Conversation</h2>
-              <div className={styles.viewModeSelector}>
-                <label htmlFor="viewMode">View Mode:</label>
-                <select 
-                  id="viewMode" 
-                  value={viewMode} 
-                  onChange={(e) => setViewMode(e.target.value as any)}
-                  className={appStyles.select}
+          
+          {showDiff ? (
+            <div className={styles.diffContainer}>
+              {currentDiffStatus === 'loading' && (
+                <div className={styles.loading}>Loading diff...</div>
+              )}
+              
+              {currentDiffStatus === 'error' && (
+                <div className={styles.error}>Error loading diff</div>
+              )}
+              
+              {currentDiffStatus === 'success' && currentDiff && (
+                <SyntaxHighlighter 
+                  language="diff" 
+                  style={vscDarkPlus}
+                  showLineNumbers={true}
+                  wrapLines={true}
+                  className={styles.diffHighlighter}
                 >
-                  <option value="standard">Standard</option>
-                  <option value="technical">Technical</option>
-                  <option value="simplified">Simplified</option>
-                </select>
-              </div>
+                  {currentDiff}
+                </SyntaxHighlighter>
+              )}
             </div>
-            
-            {currentClaudeThreadStatus === 'loading' ? (
-              <p>Loading conversation...</p>
-            ) : currentClaudeThreadStatus === 'error' ? (
-              <div className={appStyles.alertDanger}>
-                <p>Error loading conversation: {currentClaudeThreadError?.message}</p>
-                <button 
-                  className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-                  onClick={() => {
-                    if (jobId && repoName) loadClaudeThread(jobId, decodedRepoName, viewMode);
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
-            ) : currentClaudeThread ? (
-              <div className={styles.conversation}>
+          ) : (
+            <div className={styles.fileChanges}>
+              {currentRepository.changes.length === 0 ? (
+                <p>No changes were made to this repository.</p>
+              ) : (
+                <ul className={styles.fileList}>
+                  {currentRepository.changes.map((change, index) => (
+                    <li key={index} className={styles.fileItem}>
+                      <div className={styles.fileName}>{change.file}</div>
+                      <SyntaxHighlighter 
+                        language="diff" 
+                        style={vscDarkPlus}
+                        showLineNumbers={true}
+                        wrapLines={true}
+                        className={styles.diffHighlighter}
+                      >
+                        {change.diff}
+                      </SyntaxHighlighter>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'conversation' && (
+        <div className={styles.conversationTab}>
+          <div className={styles.conversationHeader}>
+            <h2>Claude Conversation</h2>
+            <div className={styles.viewOptions}>
+              <button 
+                className={`${appStyles.button} ${appStyles.small}`}
+                onClick={() => handleLoadConversation('standard')}
+              >
+                Standard View
+              </button>
+              <button 
+                className={`${appStyles.button} ${appStyles.small}`}
+                onClick={() => handleLoadConversation('technical')}
+              >
+                Technical View
+              </button>
+              <button 
+                className={`${appStyles.button} ${appStyles.small}`}
+                onClick={() => handleLoadConversation('simplified')}
+              >
+                Simplified View
+              </button>
+            </div>
+          </div>
+          
+          {currentClaudeThreadStatus === 'loading' && (
+            <div className={styles.loading}>Loading conversation...</div>
+          )}
+          
+          {currentClaudeThreadStatus === 'error' && (
+            <div className={styles.error}>Error loading conversation</div>
+          )}
+          
+          {currentClaudeThreadStatus === 'success' && currentClaudeThread && (
+            <div className={styles.conversation}>
+              <div className={styles.messages}>
                 {currentClaudeThread.messages.map((message, index) => (
                   <div 
                     key={index} 
@@ -283,62 +261,63 @@ export function RepositoryDetails() {
                         {message.role === 'human' ? 'Human' : 'Claude'}
                       </span>
                       <span className={styles.messageTime}>
-                        {formatDate(message.timestamp)}
+                        {new Date(message.timestamp).toLocaleString()}
                       </span>
                     </div>
                     <div className={styles.messageContent}>
                       {typeof message.content === 'string' ? (
-                        <pre>{message.content}</pre>
+                        <div className={styles.messageText}>{message.content}</div>
                       ) : (
-                        <pre>{JSON.stringify(message.content, null, 2)}</pre>
+                        <div className={styles.messageTool}>
+                          <pre>{JSON.stringify(message.content, null, 2)}</pre>
+                        </div>
                       )}
                     </div>
                   </div>
                 ))}
-                
+              </div>
+              
+              {currentClaudeThread.tokenUsage && (
                 <div className={styles.tokenUsage}>
                   <h3>Token Usage</h3>
-                  <div className={styles.tokenUsageGrid}>
+                  <div className={styles.tokenStats}>
                     <div>Input: {currentClaudeThread.tokenUsage.input}</div>
                     <div>Output: {currentClaudeThread.tokenUsage.output}</div>
                     <div>Total: {currentClaudeThread.tokenUsage.total}</div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <p>No conversation data available.</p>
-            )}
-          </div>
-        )}
-        
-        {activeTab === 'logs' && (
-          <div className={styles.logsTab}>
-            <h2>Logs</h2>
-            {currentRepository.logs.length > 0 ? (
-              <div className={styles.logs}>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'logs' && currentRepository.logs && (
+        <div className={styles.logsTab}>
+          <h2>Processing Logs</h2>
+          
+          {currentRepository.logs.length > 0 ? (
+            <div className={styles.logs}>
                 {currentRepository.logs.map((log, index) => (
                   <div 
                     key={index} 
-                    className={`${styles.logEntry} ${
-                      log.level === 'ERROR' ? styles.errorLog :
-                      log.level === 'WARN' ? styles.warnLog :
-                      styles.infoLog
-                    }`}
+                    className={`${styles.logEntry} ${styles[log.level.toLowerCase()]}`}
                   >
-                    <span className={styles.logTime}>{formatDate(log.timestamp)}</span>
+                    <span className={styles.logTime}>
+                      {new Date(log.timestamp).toLocaleString()}
+                    </span>
                     <span className={styles.logLevel}>{log.level}</span>
                     <span className={styles.logMessage}>{log.message}</span>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <p>No logs available.</p>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          ) : (
+            <p>No logs available.</p>
+          )}
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default RepositoryDetails;

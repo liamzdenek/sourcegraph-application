@@ -1,23 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { useApi } from '../../context/ApiContext';
-import { CreateJobRequest } from '../../services/api';
+import React, { useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
 import styles from './CreateJob.module.css';
 import appStyles from '../../app/app.module.css';
+import { useApiContext } from '../../context/ApiContext';
+import { CreateJobRequest } from 'shared';
 
-export function CreateJob() {
+const CreateJob: React.FC = () => {
   const navigate = useNavigate();
-  
   const { 
     repositories, 
     repositoriesStatus, 
-    repositoriesError, 
     loadRepositories,
     createJob,
     createJobStatus,
     createJobError
-  } = useApi();
-  
+  } = useApiContext();
+
   // Form state
   const [formData, setFormData] = useState<CreateJobRequest>({
     name: '',
@@ -27,24 +25,30 @@ export function CreateJob() {
     repositories: [],
     createPullRequests: true,
   });
-  
-  // Form validation
+
+  // Form errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Load repositories on component mount
-  useEffect(() => {
-    loadRepositories(1, 100); // Load up to 100 repositories
-  }, [loadRepositories]);
+  // Selected repositories
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   
-  // Handle form input changes
+  // Filter state
+  const [filter, setFilter] = useState('');
+
+  // Load repositories on mount
+  React.useEffect(() => {
+    loadRepositories(1, 100, filter);
+  }, [loadRepositories, filter]);
+
+  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
     
-    // Clear error for this field
+    // Clear error when field is edited
     if (errors[name]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -53,25 +57,35 @@ export function CreateJob() {
       });
     }
   };
-  
+
   // Handle checkbox changes
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: checked,
+      [name]: checked
     }));
   };
-  
+
   // Handle repository selection
-  const handleRepositoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+  const handleRepoSelection = (repoName: string) => {
+    setSelectedRepos(prev => {
+      if (prev.includes(repoName)) {
+        return prev.filter(name => name !== repoName);
+      } else {
+        return [...prev, repoName];
+      }
+    });
+    
+    // Update form data
     setFormData(prev => ({
       ...prev,
-      repositories: selectedOptions,
+      repositories: selectedRepos.includes(repoName) 
+        ? prev.repositories.filter(name => name !== repoName)
+        : [...prev.repositories, repoName]
     }));
     
-    // Clear error for repositories
+    // Clear error when repositories are selected
     if (errors.repositories) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -80,20 +94,23 @@ export function CreateJob() {
       });
     }
   };
-  
-  // Validate form
-  const validateForm = (): boolean => {
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate form
     const newErrors: Record<string, string> = {};
     
     if (!formData.name.trim()) {
       newErrors.name = 'Job name is required';
     }
     
-    if (!formData.type.trim()) {
+    if (formData.type && !formData.type.trim()) {
       newErrors.type = 'Job type is required';
     }
     
-    if (!formData.prompt.trim()) {
+    if (formData.prompt && !formData.prompt.trim()) {
       newErrors.prompt = 'Prompt is required';
     }
     
@@ -101,191 +118,196 @@ export function CreateJob() {
       newErrors.repositories = 'At least one repository must be selected';
     }
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
     
     try {
-      const job = await createJob(formData);
-      navigate({ to: `/jobs/${job.jobId}` });
+      const result = await createJob(formData);
+      navigate({ to: '/jobs/$jobId', params: { jobId: result.jobId } });
     } catch (error) {
-      console.error('Failed to create job:', error);
+      console.error('Error creating job:', error);
+      setErrors({
+        submit: 'Failed to create job. Please try again.'
+      });
     }
   };
-  
+
   return (
-    <div className={appStyles.page}>
-      <h1>Create Job</h1>
+    <div className={styles.createJob}>
+      <div className={styles.header}>
+        <h1>Create New Job</h1>
+        <Link 
+          to="/jobs" 
+          className={`${appStyles.button} ${appStyles.text}`}
+        >
+          Cancel
+        </Link>
+      </div>
       
-      {createJobError && (
-        <div className={appStyles.alertDanger}>
-          <p>Error creating job: {createJobError.message}</p>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className={appStyles.form}>
-        {/* Job Name */}
-        <div className={appStyles.formGroup}>
-          <label htmlFor="name" className={appStyles.label}>
-            Job Name *
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            className={appStyles.input}
-            placeholder="Enter job name"
-          />
-          {errors.name && <div className={appStyles.error}>{errors.name}</div>}
-        </div>
-        
-        {/* Job Description */}
-        <div className={appStyles.formGroup}>
-          <label htmlFor="description" className={appStyles.label}>
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            className={appStyles.textarea}
-            placeholder="Enter job description"
-          />
-        </div>
-        
-        {/* Job Type */}
-        <div className={appStyles.formGroup}>
-          <label htmlFor="type" className={appStyles.label}>
-            Job Type *
-          </label>
-          <select
-            id="type"
-            name="type"
-            value={formData.type}
-            onChange={handleInputChange}
-            className={appStyles.select}
-          >
-            <option value="code-pattern-update">Code Pattern Update</option>
-            <option value="vulnerability-fix">Vulnerability Fix</option>
-            <option value="code-cleanup">Code Cleanup</option>
-            <option value="feature-implementation">Feature Implementation</option>
-          </select>
-          {errors.type && <div className={appStyles.error}>{errors.type}</div>}
-        </div>
-        
-        {/* Prompt */}
-        <div className={appStyles.formGroup}>
-          <label htmlFor="prompt" className={appStyles.label}>
-            Prompt *
-          </label>
-          <textarea
-            id="prompt"
-            name="prompt"
-            value={formData.prompt}
-            onChange={handleInputChange}
-            className={appStyles.textarea}
-            placeholder="Enter instructions for Claude"
-            rows={10}
-          />
-          {errors.prompt && <div className={appStyles.error}>{errors.prompt}</div>}
-          <div className={styles.promptHelp}>
-            <p>
-              Provide clear instructions for Claude to perform the task. Be specific about what changes should be made.
-            </p>
-            <p>
-              Example: &quot;You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of &apos;oldFunction(param)&apos; with &apos;newFunction(param, {'{version: 2}'})&apos;.&quot;
-            </p>
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <div className={styles.formSection}>
+          <h2>Job Details</h2>
+          
+          <div className={styles.formGroup}>
+            <label htmlFor="name">Job Name *</label>
+            <input 
+              type="text" 
+              id="name" 
+              name="name" 
+              value={formData.name}
+              onChange={handleInputChange}
+              className={errors.name ? styles.error : ''}
+            />
+            {errors.name && <div className={styles.errorMessage}>{errors.name}</div>}
+          </div>
+          
+          <div className={styles.formGroup}>
+            <label htmlFor="description">Description</label>
+            <textarea 
+              id="description" 
+              name="description" 
+              value={formData.description || ''}
+              onChange={handleInputChange}
+              rows={3}
+            />
+          </div>
+          
+          <div className={styles.formGroup}>
+            <label htmlFor="type">Job Type *</label>
+            <select 
+              id="type" 
+              name="type" 
+              value={formData.type || ''}
+              onChange={handleInputChange}
+              className={errors.type ? styles.error : ''}
+            >
+              <option value="code-pattern-update">Code Pattern Update</option>
+              <option value="security-fix">Security Fix</option>
+              <option value="dependency-update">Dependency Update</option>
+              <option value="code-review">Code Review</option>
+              <option value="custom">Custom</option>
+            </select>
+            {errors.type && <div className={styles.errorMessage}>{errors.type}</div>}
+          </div>
+          
+          <div className={styles.formGroup}>
+            <label htmlFor="prompt">Prompt *</label>
+            <textarea 
+              id="prompt" 
+              name="prompt" 
+              value={formData.prompt || ''}
+              onChange={handleInputChange}
+              rows={6}
+              className={errors.prompt ? styles.error : ''}
+              placeholder="Describe what you want Claude to do with the selected repositories..."
+            />
+            {errors.prompt && <div className={styles.errorMessage}>{errors.prompt}</div>}
           </div>
         </div>
         
-        {/* Repositories */}
-        <div className={appStyles.formGroup}>
-          <label htmlFor="repositories" className={appStyles.label}>
-            Repositories *
-          </label>
-          {repositoriesStatus === 'loading' ? (
-            <p>Loading repositories...</p>
-          ) : repositoriesStatus === 'error' ? (
-            <div className={appStyles.error}>
-              <p>Error loading repositories: {repositoriesError?.message}</p>
-              <button 
-                type="button"
-                className={`${appStyles.button} ${appStyles.buttonPrimary}`}
-                onClick={() => loadRepositories(1, 100)}
-              >
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              <select
-                id="repositories"
-                name="repositories"
-                multiple
-                value={formData.repositories}
-                onChange={handleRepositoryChange}
-                className={`${appStyles.select} ${styles.repositoriesSelect}`}
-                size={10}
-              >
-                {repositories.map(repo => (
-                  <option key={repo.id} value={repo.name}>
-                    {repo.name}
-                  </option>
-                ))}
-              </select>
-              <div className={styles.selectHelp}>
-                Hold Ctrl (or Cmd on Mac) to select multiple repositories
-              </div>
-              {errors.repositories && <div className={appStyles.error}>{errors.repositories}</div>}
-            </>
-          )}
-        </div>
-        
-        {/* Create Pull Requests */}
-        <div className={appStyles.formGroup}>
-          <label className={appStyles.checkboxLabel}>
-            <input
-              type="checkbox"
-              name="createPullRequests"
-              checked={formData.createPullRequests}
-              onChange={handleCheckboxChange}
-              className={appStyles.checkbox}
+        <div className={styles.formSection}>
+          <h2>Repositories</h2>
+          
+          <div className={styles.formGroup}>
+            <label htmlFor="repositoryFilter">Filter Repositories</label>
+            <input 
+              type="text" 
+              id="repositoryFilter" 
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter by name..."
             />
-            Create Pull Requests
-          </label>
+          </div>
+          
+          <div className={styles.repositoriesContainer}>
+            {repositoriesStatus === 'loading' && (
+              <div className={styles.loading}>Loading repositories...</div>
+            )}
+            
+            {repositoriesStatus === 'error' && (
+              <div className={styles.error}>Error loading repositories</div>
+            )}
+            
+            {repositoriesStatus === 'success' && repositories.length === 0 && (
+              <div className={styles.empty}>No repositories found</div>
+            )}
+            
+            {repositoriesStatus === 'success' && repositories.length > 0 && (
+              <div className={styles.repositories}>
+                {errors.repositories && (
+                  <div className={styles.errorMessage}>{errors.repositories}</div>
+                )}
+                
+                {repositories.map(repo => (
+                  <div 
+                    key={repo.id} 
+                    className={`${styles.repository} ${
+                      selectedRepos.includes(repo.name) ? styles.selected : ''
+                    }`}
+                    onClick={() => handleRepoSelection(repo.name)}
+                  >
+                    <div className={styles.checkbox}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedRepos.includes(repo.name)}
+                        onChange={() => {}} // Handled by the div click
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className={styles.repoInfo}>
+                      <div className={styles.repoName}>{repo.name}</div>
+                      <div className={styles.repoDescription}>{repo.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         
-        {/* Submit Button */}
+        <div className={styles.formSection}>
+          <h2>Options</h2>
+          
+          <div className={styles.formGroup}>
+            <div className={styles.checkboxGroup}>
+              <input 
+                type="checkbox" 
+                id="createPullRequests" 
+                name="createPullRequests" 
+                checked={formData.createPullRequests || false}
+                onChange={handleCheckboxChange}
+              />
+              <label htmlFor="createPullRequests">Create Pull Requests</label>
+            </div>
+            <div className={styles.helpText}>
+              If checked, Claude will create pull requests for any changes it makes.
+            </div>
+          </div>
+        </div>
+        
         <div className={styles.formActions}>
-          <button
-            type="submit"
-            className={`${appStyles.button} ${appStyles.buttonPrimary}`}
+          {errors.submit && <div className={styles.errorMessage}>{errors.submit}</div>}
+          
+          <button 
+            type="submit" 
+            className={`${appStyles.button} ${appStyles.primary}`}
             disabled={createJobStatus === 'loading'}
           >
             {createJobStatus === 'loading' ? 'Creating...' : 'Create Job'}
           </button>
-          <button
-            type="button"
-            className={`${appStyles.button} ${appStyles.buttonSecondary}`}
-            onClick={() => navigate({ to: '/jobs' })}
+          
+          <Link 
+            to="/jobs" 
+            className={`${appStyles.button} ${appStyles.text}`}
           >
             Cancel
-          </button>
+          </Link>
         </div>
       </form>
     </div>
   );
-}
+};
 
 export default CreateJob;

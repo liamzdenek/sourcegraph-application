@@ -1,31 +1,46 @@
-import { z } from 'zod';
+/**
+ * Utility functions for the shared package
+ */
+
 import { ErrorResponse } from './types';
 
 /**
- * Generate a unique ID
- * @returns A unique ID
+ * Get an environment variable or return a default value
+ * @param name The name of the environment variable
+ * @param defaultValue The default value to return if the environment variable is not set
+ * @returns The value of the environment variable or the default value
  */
-export function generateId(): string {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+export function getEnv(name: string, defaultValue: string): string {
+  return process.env[name] || defaultValue;
 }
 
 /**
- * Get the current timestamp in ISO format
- * @returns Current timestamp in ISO format
+ * Get an environment variable as a number or return a default value
+ * @param name The name of the environment variable
+ * @param defaultValue The default value to return if the environment variable is not set
+ * @returns The value of the environment variable as a number or the default value
  */
-export function getCurrentTimestamp(): string {
-  return new Date().toISOString();
+export function getNumberEnv(name: string, defaultValue: number): number {
+  const value = process.env[name];
+  return value ? parseInt(value, 10) : defaultValue;
 }
 
 /**
- * Format an error response
- * @param message Error message
- * @param code Error code
- * @returns Error response object
+ * Get an environment variable as a boolean or return a default value
+ * @param name The name of the environment variable
+ * @param defaultValue The default value to return if the environment variable is not set
+ * @returns The value of the environment variable as a boolean or the default value
  */
+export function getBooleanEnv(name: string, defaultValue: boolean): boolean {
+  const value = process.env[name];
+  if (!value) return defaultValue;
+  return value.toLowerCase() === 'true' || value === '1';
+}
+
 export function formatError(message: string, code = 'INTERNAL_SERVER_ERROR'): ErrorResponse {
   return {
+    message,
+    code,
     error: {
       message,
       code,
@@ -34,132 +49,13 @@ export function formatError(message: string, code = 'INTERNAL_SERVER_ERROR'): Er
 }
 
 /**
- * Validate data against a Zod schema
- * @param schema Zod schema
- * @param data Data to validate
- * @returns Validated data or throws an error
+ * Format a date string to a human-readable format
+ * @param dateString The date string to format
+ * @returns The formatted date string
  */
-export function validateWithSchema<T>(schema: z.ZodType<T>, data: unknown): T {
-  try {
-    return schema.parse(data);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const message = error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
-      throw new Error(`Validation error: ${message}`);
-    }
-    throw error;
-  }
-}
-
-/**
- * Sleep for a specified duration
- * @param ms Milliseconds to sleep
- * @returns Promise that resolves after the specified duration
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Retry a function with exponential backoff
- * @param fn Function to retry
- * @param maxRetries Maximum number of retries
- * @param initialDelay Initial delay in milliseconds
- * @returns Result of the function
- */
-export async function retry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  initialDelay = 1000
-): Promise<T> {
-  let lastError: unknown;
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return 'N/A';
   
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      const delay = initialDelay * Math.pow(2, i);
-      console.log(`Retry ${i + 1}/${maxRetries} failed. Retrying in ${delay}ms...`);
-      await sleep(delay);
-    }
-  }
-  
-  throw lastError;
-}
-
-/**
- * Chunk an array into smaller arrays
- * @param array Array to chunk
- * @param size Chunk size
- * @returns Array of chunks
- */
-export function chunkArray<T>(array: T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
-    array.slice(i * size, i * size + size)
-  );
-}
-
-/**
- * Parse environment variable
- * @param name Environment variable name
- * @param defaultValue Default value
- * @returns Environment variable value or default value
- */
-export function getEnv(name: string, defaultValue?: string): string {
-  const value = process.env[name];
-  if (value === undefined) {
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-    throw new Error(`Environment variable ${name} is not defined`);
-  }
-  return value;
-}
-
-/**
- * Parse boolean environment variable
- * @param name Environment variable name
- * @param defaultValue Default value
- * @returns Boolean value of environment variable or default value
- */
-export function getBooleanEnv(name: string, defaultValue = false): boolean {
-  const value = process.env[name];
-  if (value === undefined) {
-    return defaultValue;
-  }
-  return value.toLowerCase() === 'true' || value === '1';
-}
-
-/**
- * Parse number environment variable
- * @param name Environment variable name
- * @param defaultValue Default value
- * @returns Number value of environment variable or default value
- */
-export function getNumberEnv(name: string, defaultValue?: number): number {
-  const value = process.env[name];
-  if (value === undefined) {
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-    throw new Error(`Environment variable ${name} is not defined`);
-  }
-  const parsed = Number(value);
-  if (isNaN(parsed)) {
-    throw new Error(`Environment variable ${name} is not a number`);
-  }
-  return parsed;
-}
-
-/**
- * Get error message from unknown error
- * @param error Unknown error
- * @returns Error message
- */
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
+  const date = new Date(dateString);
+  return date.toLocaleString();
 }

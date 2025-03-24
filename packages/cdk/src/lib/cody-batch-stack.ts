@@ -12,7 +12,6 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as child_process from 'child_process';
 
 // Helper function to find the git root
 const findGitRoot = (startPath: string): string => {
@@ -165,6 +164,18 @@ export class CodyBatchStack extends cdk.Stack {
       platformCapabilities: ['FARGATE'],
     });
 
+    // API Gateway
+    const api = new apigateway.RestApi(this, 'CodyBatchApi', {
+      restApiName: 'Cody Batch API',
+      description: 'API for Cody Batch',
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
+        allowCredentials: true,
+      },
+    });
+
     // Lambda Function
     const apiPath = path.join(gitRootDir, 'dist', 'packages', 'api');
     console.log(`API path: ${apiPath}`);
@@ -175,9 +186,39 @@ export class CodyBatchStack extends cdk.Stack {
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
         exports.handler = async function(event, context) {
+          // Add CORS headers to all responses
+          const headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+            'Access-Control-Allow-Methods': 'OPTIONS,GET,POST,PUT,DELETE',
+            'Content-Type': 'application/json'
+          };
+
+          // Handle OPTIONS requests for CORS preflight
+          if (event.httpMethod === 'OPTIONS') {
+            return {
+              statusCode: 200,
+              headers: headers,
+              body: JSON.stringify({})
+            };
+          }
+
+          // Handle health check endpoint
+          if (event.path === '/health') {
+            return {
+              statusCode: 200,
+              headers: headers,
+              body: JSON.stringify({
+                status: 'healthy',
+                timestamp: new Date().toISOString()
+              })
+            };
+          }
+
+          // Default response for other endpoints
           return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({
               message: 'Hello from Cody Batch API',
               tables: {
@@ -208,17 +249,6 @@ export class CodyBatchStack extends cdk.Stack {
       actions: ['batch:SubmitJob', 'batch:CancelJob', 'batch:DescribeJobs'],
       resources: ['*'],
     }));
-
-    // API Gateway
-    const api = new apigateway.RestApi(this, 'CodyBatchApi', {
-      restApiName: 'Cody Batch API',
-      description: 'API for Cody Batch',
-      defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
-      },
-    });
 
     const lambdaIntegration = new apigateway.LambdaIntegration(apiLambda);
     api.root.addMethod('ANY', lambdaIntegration);
@@ -270,7 +300,7 @@ export class CodyBatchStack extends cdk.Stack {
 
     // Throw an error if the frontend build doesn't exist
     if (!frontendExists) {
-      throw new Error(`Frontend build not found at ${frontendPath}. Please run 'npx nx build frontend' first.`);
+      throw new Error(`Frontend build not found at ${frontendPath}. Please run 'VITE_API_BASE_URL=<api_url> npx nx build frontend' first.`);
     }
 
     // Deploy the frontend
