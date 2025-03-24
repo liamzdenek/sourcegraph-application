@@ -37,6 +37,27 @@
         }
       }
     },
+    "build-test": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "development",
+      "options": {
+        "platform": "node",
+        "outputPath": "dist/packages/batch",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "packages/batch/src/test-batch-processor.ts",
+        "tsConfig": "packages/batch/tsconfig.app.json",
+        "assets": ["packages/batch/src/assets"],
+        "generatePackageJson": true,
+        "esbuildOptions": {
+          "sourcemap": true,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      }
+    },
     "serve": {
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
@@ -52,6 +73,15 @@
         "production": {
           "buildTarget": "batch:build:production"
         }
+      }
+    },
+    "serve-test": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build-test"],
+      "options": {
+        "buildTarget": "batch:build-test",
+        "runBuildTargetDependencies": false
       }
     },
     "test": {
