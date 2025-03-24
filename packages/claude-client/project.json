@@ -16,6 +16,13 @@
         "format": ["cjs"],
         "generatePackageJson": true
       }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ts-node packages/claude-client/src/test-claude-client.ts {args.path} \"{args.prompt}\" {args.iterations}",
+        "cwd": "."
+      }
     }
   }
 }

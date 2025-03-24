@@ -2,8 +2,18 @@
   "name": "claude-client",
   "version": "0.0.1",
   "private": true,
-  "type": "commonjs",
-  "main": "./index.cjs",
+  "type": "module",
+  "main": "./index.js",
   "types": "./index.d.ts",
-  "dependencies": {}
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "glob": "^10.3.10",
+    "shared": "*",
+    "zod": "^3.22.4",
+    "zod-to-json-schema": "^3.22.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3"
+  }
 }
