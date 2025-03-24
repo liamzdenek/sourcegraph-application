@@ -6,62 +6,6 @@ This document defines the API contracts for all services in the Cody Batch syste
 
 Base URL: `https://api.cody-batch.example.com` (placeholder, will be updated after deployment)
 
-### Authentication
-
-#### GitHub OAuth Initialization
-
-- **Endpoint**: `GET /auth/github`
-- **Description**: Initiates GitHub OAuth flow
-- **Response**: Redirects to GitHub authorization page
-
-**Sample Curl**:
-```bash
-curl -v https://api.cody-batch.example.com/auth/github
-```
-
-#### GitHub OAuth Callback
-
-- **Endpoint**: `GET /auth/github/callback`
-- **Description**: Handles GitHub OAuth callback
-- **Query Parameters**:
-  - `code`: OAuth authorization code
-  - `state`: State parameter for CSRF protection
-- **Response**: Redirects to frontend with access token
-
-**Sample Curl**:
-```bash
-# This is handled by the browser during OAuth flow
-curl -v "https://api.cody-batch.example.com/auth/github/callback?code=abc123&state=xyz789"
-```
-
-#### Get Current User
-
-- **Endpoint**: `GET /auth/user`
-- **Description**: Returns information about the authenticated user
-- **Authentication**: Bearer token
-- **Response**: User information
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
-
-**Response Body**:
-```json
-{
-  "id": "12345",
-  "login": "username",
-  "name": "User Name",
-  "avatarUrl": "https://github.com/avatars/u/12345"
-}
-```
-
-**Sample Curl**:
-```bash
-curl -v https://api.cody-batch.example.com/auth/user \
-  -H "Authorization: Bearer github-token"
-```
-
 ### Health Check
 
 #### Get API Health
@@ -92,21 +36,16 @@ curl -v https://api.cody-batch.example.com/health
 
 ### Repositories
 
-#### List User Repositories
+#### List Available Repositories
 
 - **Endpoint**: `GET /repositories`
-- **Description**: Lists repositories accessible to the authenticated user
-- **Authentication**: Bearer token
+- **Description**: Lists repositories that match the allowed patterns (github.com/liamzdenek/*)
+- **Authentication**: None
 - **Query Parameters**:
   - `page`: Page number (default: 1)
   - `perPage`: Items per page (default: 10)
   - `filter`: Filter by name (optional)
 - **Response**: List of repositories
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
 
 **Response Body**:
 ```json
@@ -116,15 +55,13 @@ Authorization: Bearer <github-token>
       "id": "repo1",
       "name": "liamzdenek/repo1",
       "description": "Repository description",
-      "url": "https://github.com/liamzdenek/repo1",
-      "isOwned": true
+      "url": "https://github.com/liamzdenek/repo1"
     },
     {
       "id": "repo2",
       "name": "liamzdenek/repo2",
       "description": "Another repository",
-      "url": "https://github.com/liamzdenek/repo2",
-      "isOwned": true
+      "url": "https://github.com/liamzdenek/repo2"
     }
   ],
   "pagination": {
@@ -138,45 +75,7 @@ Authorization: Bearer <github-token>
 
 **Sample Curl**:
 ```bash
-curl -v "https://api.cody-batch.example.com/repositories?page=1&perPage=10" \
-  -H "Authorization: Bearer github-token"
-```
-
-#### Get Repository Details
-
-- **Endpoint**: `GET /repositories/:repoId`
-- **Description**: Gets detailed information about a repository
-- **Authentication**: Bearer token
-- **Path Parameters**:
-  - `repoId`: Repository ID
-- **Response**: Repository details
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
-
-**Response Body**:
-```json
-{
-  "id": "repo1",
-  "name": "liamzdenek/repo1",
-  "description": "Repository description",
-  "url": "https://github.com/liamzdenek/repo1",
-  "isOwned": true,
-  "defaultBranch": "main",
-  "language": "JavaScript",
-  "stars": 10,
-  "forks": 2,
-  "createdAt": "2024-01-01T00:00:00Z",
-  "updatedAt": "2025-03-01T00:00:00Z"
-}
-```
-
-**Sample Curl**:
-```bash
-curl -v https://api.cody-batch.example.com/repositories/repo1 \
-  -H "Authorization: Bearer github-token"
+curl -v "https://api.cody-batch.example.com/repositories?page=1&perPage=10"
 ```
 
 ### Jobs
@@ -185,26 +84,22 @@ curl -v https://api.cody-batch.example.com/repositories/repo1 \
 
 - **Endpoint**: `POST /jobs`
 - **Description**: Creates a new job
-- **Authentication**: Bearer token
+- **Authentication**: None
 - **Request Body**: Job configuration
 - **Response**: Created job
 
 **Request Headers**:
 ```
-Authorization: Bearer <github-token>
 Content-Type: application/json
 ```
 
 **Request Body**:
 ```json
 {
-  "name": "Fix Log4J CVE",
-  "description": "Update Log4J to version 2.15.0 or higher",
-  "type": "vulnerability-fix",
-  "parameters": {
-    "vulnerability": "log4j",
-    "targetVersion": "2.15.0"
-  },
+  "name": "Update code patterns",
+  "description": "Apply a specific code change across repositories",
+  "type": "code-pattern-update",
+  "prompt": "You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of 'oldFunction(param)' with 'newFunction(param, { version: 2 })'.",
   "repositories": [
     "liamzdenek/repo1",
     "liamzdenek/repo2"
@@ -217,37 +112,29 @@ Content-Type: application/json
 ```json
 {
   "jobId": "job-123",
-  "name": "Fix Log4J CVE",
-  "description": "Update Log4J to version 2.15.0 or higher",
-  "type": "vulnerability-fix",
-  "parameters": {
-    "vulnerability": "log4j",
-    "targetVersion": "2.15.0"
-  },
+  "name": "Update code patterns",
+  "description": "Apply a specific code change across repositories",
+  "type": "code-pattern-update",
+  "prompt": "You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of 'oldFunction(param)' with 'newFunction(param, { version: 2 })'.",
   "repositories": [
     "liamzdenek/repo1",
     "liamzdenek/repo2"
   ],
   "createPullRequests": true,
   "status": "pending",
-  "createdAt": "2025-03-24T12:00:00Z",
-  "createdBy": "username"
+  "createdAt": "2025-03-24T12:00:00Z"
 }
 ```
 
 **Sample Curl**:
 ```bash
 curl -v https://api.cody-batch.example.com/jobs \
-  -H "Authorization: Bearer github-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Fix Log4J CVE",
-    "description": "Update Log4J to version 2.15.0 or higher",
-    "type": "vulnerability-fix",
-    "parameters": {
-      "vulnerability": "log4j",
-      "targetVersion": "2.15.0"
-    },
+    "name": "Update code patterns",
+    "description": "Apply a specific code change across repositories",
+    "type": "code-pattern-update",
+    "prompt": "You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of '\''oldFunction(param)'\'' with '\''newFunction(param, { version: 2 })'\''.",
     "repositories": [
       "liamzdenek/repo1",
       "liamzdenek/repo2"
@@ -259,18 +146,13 @@ curl -v https://api.cody-batch.example.com/jobs \
 #### List Jobs
 
 - **Endpoint**: `GET /jobs`
-- **Description**: Lists jobs created by the authenticated user
-- **Authentication**: Bearer token
+- **Description**: Lists all jobs
+- **Authentication**: None
 - **Query Parameters**:
   - `page`: Page number (default: 1)
   - `perPage`: Items per page (default: 10)
   - `status`: Filter by status (optional)
 - **Response**: List of jobs
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
 
 **Response Body**:
 ```json
@@ -278,8 +160,8 @@ Authorization: Bearer <github-token>
   "jobs": [
     {
       "jobId": "job-123",
-      "name": "Fix Log4J CVE",
-      "type": "vulnerability-fix",
+      "name": "Update code patterns",
+      "type": "code-pattern-update",
       "status": "in-progress",
       "createdAt": "2025-03-24T12:00:00Z",
       "repositoryCount": 2,
@@ -287,8 +169,8 @@ Authorization: Bearer <github-token>
     },
     {
       "jobId": "job-124",
-      "name": "Update dependencies",
-      "type": "dependency-update",
+      "name": "Fix security vulnerabilities",
+      "type": "vulnerability-fix",
       "status": "completed",
       "createdAt": "2025-03-23T12:00:00Z",
       "repositoryCount": 1,
@@ -306,53 +188,45 @@ Authorization: Bearer <github-token>
 
 **Sample Curl**:
 ```bash
-curl -v "https://api.cody-batch.example.com/jobs?page=1&perPage=10" \
-  -H "Authorization: Bearer github-token"
+curl -v "https://api.cody-batch.example.com/jobs?page=1&perPage=10"
 ```
 
 #### Get Job Details
 
 - **Endpoint**: `GET /jobs/:jobId`
 - **Description**: Gets detailed information about a job
-- **Authentication**: Bearer token
+- **Authentication**: None
 - **Path Parameters**:
   - `jobId`: Job ID
 - **Response**: Job details
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
 
 **Response Body**:
 ```json
 {
   "jobId": "job-123",
-  "name": "Fix Log4J CVE",
-  "description": "Update Log4J to version 2.15.0 or higher",
-  "type": "vulnerability-fix",
-  "parameters": {
-    "vulnerability": "log4j",
-    "targetVersion": "2.15.0"
-  },
+  "name": "Update code patterns",
+  "description": "Apply a specific code change across repositories",
+  "type": "code-pattern-update",
+  "prompt": "You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of 'oldFunction(param)' with 'newFunction(param, { version: 2 })'.",
   "repositories": [
     {
       "name": "liamzdenek/repo1",
       "status": "completed",
       "pullRequestUrl": "https://github.com/liamzdenek/repo1/pull/1",
+      "wereChangesNecessary": true,
       "completedAt": "2025-03-24T12:30:00Z"
     },
     {
       "name": "liamzdenek/repo2",
       "status": "in-progress",
       "pullRequestUrl": null,
+      "wereChangesNecessary": null,
       "completedAt": null
     }
   ],
   "createPullRequests": true,
   "status": "in-progress",
   "createdAt": "2025-03-24T12:00:00Z",
-  "createdBy": "username",
   "startedAt": "2025-03-24T12:01:00Z",
   "completedAt": null
 }
@@ -360,23 +234,17 @@ Authorization: Bearer <github-token>
 
 **Sample Curl**:
 ```bash
-curl -v https://api.cody-batch.example.com/jobs/job-123 \
-  -H "Authorization: Bearer github-token"
+curl -v https://api.cody-batch.example.com/jobs/job-123
 ```
 
 #### Cancel Job
 
 - **Endpoint**: `POST /jobs/:jobId/cancel`
 - **Description**: Cancels a running job
-- **Authentication**: Bearer token
+- **Authentication**: None
 - **Path Parameters**:
   - `jobId`: Job ID
 - **Response**: Updated job status
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
 
 **Response Body**:
 ```json
@@ -389,26 +257,20 @@ Authorization: Bearer <github-token>
 
 **Sample Curl**:
 ```bash
-curl -v -X POST https://api.cody-batch.example.com/jobs/job-123/cancel \
-  -H "Authorization: Bearer github-token"
+curl -v -X POST https://api.cody-batch.example.com/jobs/job-123/cancel
 ```
 
 ### Repository Results
 
 #### Get Repository Job Result
 
-- **Endpoint**: `GET /jobs/:jobId/repositories/:repoId`
+- **Endpoint**: `GET /jobs/:jobId/repositories/:repoName`
 - **Description**: Gets detailed results for a specific repository in a job
-- **Authentication**: Bearer token
+- **Authentication**: None
 - **Path Parameters**:
   - `jobId`: Job ID
-  - `repoId`: Repository ID
+  - `repoName`: Repository name (e.g., "liamzdenek/repo1")
 - **Response**: Repository job result
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
 
 **Response Body**:
 ```json
@@ -417,23 +279,22 @@ Authorization: Bearer <github-token>
   "repositoryName": "liamzdenek/repo1",
   "status": "completed",
   "pullRequestUrl": "https://github.com/liamzdenek/repo1/pull/1",
+  "wereChangesNecessary": true,
   "startedAt": "2025-03-24T12:05:00Z",
   "completedAt": "2025-03-24T12:30:00Z",
   "changes": [
     {
-      "file": "pom.xml",
-      "diff": "--- a/pom.xml\n+++ b/pom.xml\n@@ -10,7 +10,7 @@\n     <dependency>\n       <groupId>org.apache.logging.log4j</groupId>\n       <artifactId>log4j-core</artifactId>\n-      <version>2.14.0</version>\n+      <version>2.15.0</version>\n     </dependency>"
+      "file": "src/api.js",
+      "diff": "--- a/src/api.js\n+++ b/src/api.js\n@@ -10,7 +10,7 @@\n function fetchData(id) {\n-  return oldFunction(id);\n+  return newFunction(id, { version: 2 });\n }"
     },
     {
-      "file": "build.gradle",
-      "diff": "--- a/build.gradle\n+++ b/build.gradle\n@@ -15,7 +15,7 @@\n dependencies {\n-    implementation 'org.apache.logging.log4j:log4j-core:2.14.0'\n+    implementation 'org.apache.logging.log4j:log4j-core:2.15.0'\n     testImplementation 'junit:junit:4.13.2'\n }"
+      "file": "src/utils.js",
+      "diff": "--- a/src/utils.js\n+++ b/src/utils.js\n@@ -15,7 +15,7 @@\n function processItem(item) {\n-  const result = oldFunction(item.id);\n+  const result = newFunction(item.id, { version: 2 });\n   return result;\n }"
     }
   ],
-  "analysisDetails": {
-    "vulnerabilityDetected": true,
-    "affectedFiles": 2,
-    "claudePromptTokens": 1500,
-    "claudeResponseTokens": 800
+  "claudeMessages": {
+    "finalMessage": "I've updated all instances of the deprecated API call `oldFunction(param)` to use the new format `newFunction(param, { version: 2 })`. I found and updated 2 occurrences across 2 files.",
+    "threadId": "thread-123"
   },
   "logs": [
     {
@@ -444,12 +305,12 @@ Authorization: Bearer <github-token>
     {
       "timestamp": "2025-03-24T12:10:00Z",
       "level": "INFO",
-      "message": "Detected Log4J vulnerability in pom.xml"
+      "message": "Found deprecated API call in src/api.js"
     },
     {
       "timestamp": "2025-03-24T12:15:00Z",
       "level": "INFO",
-      "message": "Detected Log4J vulnerability in build.gradle"
+      "message": "Found deprecated API call in src/utils.js"
     },
     {
       "timestamp": "2025-03-24T12:20:00Z",
@@ -472,89 +333,132 @@ Authorization: Bearer <github-token>
 
 **Sample Curl**:
 ```bash
-curl -v https://api.cody-batch.example.com/jobs/job-123/repositories/repo1 \
-  -H "Authorization: Bearer github-token"
+curl -v https://api.cody-batch.example.com/jobs/job-123/repositories/liamzdenek%2Frepo1
 ```
 
 #### Get Repository Diff
 
-- **Endpoint**: `GET /jobs/:jobId/repositories/:repoId/diff`
+- **Endpoint**: `GET /jobs/:jobId/repositories/:repoName/diff`
 - **Description**: Gets the full diff for a repository in a job
-- **Authentication**: Bearer token
+- **Authentication**: None
 - **Path Parameters**:
   - `jobId`: Job ID
-  - `repoId`: Repository ID
-- **Response**: Full diff
-
-**Request Headers**:
-```
-Authorization: Bearer <github-token>
-```
+  - `repoName`: Repository name (e.g., "liamzdenek/repo1")
+- **Response**: Full diff as text/plain
 
 **Response Body**:
 ```
-diff --git a/pom.xml b/pom.xml
+diff --git a/src/api.js b/src/api.js
 index 1234567..abcdefg 100644
---- a/pom.xml
-+++ b/pom.xml
-@@ -10,7 +10,7 @@
-     <dependency>
-       <groupId>org.apache.logging.log4j</groupId>
-       <artifactId>log4j-core</artifactId>
--      <version>2.14.0</version>
-+      <version>2.15.0</version>
-     </dependency>
+--- a/src/api.js
++++ b/src/api.js
+@@ -10,7 +10,7 @@ function fetchData(id) {
+-  return oldFunction(id);
++  return newFunction(id, { version: 2 });
+ }
 
-diff --git a/build.gradle b/build.gradle
+diff --git a/src/utils.js b/src/utils.js
 index 7654321..gfedcba 100644
---- a/build.gradle
-+++ b/build.gradle
-@@ -15,7 +15,7 @@
- dependencies {
--    implementation 'org.apache.logging.log4j:log4j-core:2.14.0'
-+    implementation 'org.apache.logging.log4j:log4j-core:2.15.0'
-     testImplementation 'junit:junit:4.13.2'
+--- a/src/utils.js
++++ b/src/utils.js
+@@ -15,7 +15,7 @@ function processItem(item) {
+-  const result = oldFunction(item.id);
++  const result = newFunction(item.id, { version: 2 });
+   return result;
  }
 ```
 
 **Sample Curl**:
 ```bash
-curl -v https://api.cody-batch.example.com/jobs/job-123/repositories/repo1/diff \
-  -H "Authorization: Bearer github-token"
+curl -v https://api.cody-batch.example.com/jobs/job-123/repositories/liamzdenek%2Frepo1/diff
 ```
 
-## Worker Lambda
+#### Get Claude Message Thread
 
-The Worker Lambda is not directly accessible via API Gateway. It is triggered by events and processes jobs asynchronously.
+- **Endpoint**: `GET /jobs/:jobId/repositories/:repoName/claude-thread`
+- **Description**: Gets the full Claude message thread for a repository in a job
+- **Authentication**: None
+- **Path Parameters**:
+  - `jobId`: Job ID
+  - `repoName`: Repository name (e.g., "liamzdenek/repo1")
+- **Response**: Full Claude message thread
+
+**Response Body**:
+```json
+{
+  "threadId": "thread-123",
+  "messages": [
+    {
+      "role": "human",
+      "content": "You are an expert software engineer. Your task is to update all instances of deprecated API calls to use the new format. Replace all occurrences of 'oldFunction(param)' with 'newFunction(param, { version: 2 })'. Here's the first file to analyze:\n\nsrc/api.js:\n```javascript\nfunction fetchData(id) {\n  return oldFunction(id);\n}\n```",
+      "timestamp": "2025-03-24T12:10:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll update the deprecated API call in this file. Here's the change I'll make:\n\n```javascript\nfunction fetchData(id) {\n  return newFunction(id, { version: 2 });\n}\n```\n\nThis replaces the deprecated `oldFunction(param)` with the new format `newFunction(param, { version: 2 })` as requested.",
+      "timestamp": "2025-03-24T12:10:30Z"
+    },
+    {
+      "role": "human",
+      "content": "Here's another file to analyze:\n\nsrc/utils.js:\n```javascript\nfunction processItem(item) {\n  const result = oldFunction(item.id);\n  return result;\n}\n```",
+      "timestamp": "2025-03-24T12:15:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll update the deprecated API call in this file as well. Here's the change I'll make:\n\n```javascript\nfunction processItem(item) {\n  const result = newFunction(item.id, { version: 2 });\n  return result;\n}\n```\n\nThis replaces the deprecated `oldFunction(param)` with the new format `newFunction(param, { version: 2 })` as requested.",
+      "timestamp": "2025-03-24T12:15:30Z"
+    },
+    {
+      "role": "human",
+      "content": "Please summarize all the changes you've made.",
+      "timestamp": "2025-03-24T12:20:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "I've updated all instances of the deprecated API call `oldFunction(param)` to use the new format `newFunction(param, { version: 2 })`. I found and updated 2 occurrences across 2 files:\n\n1. In `src/api.js`: Updated the call in the `fetchData` function\n2. In `src/utils.js`: Updated the call in the `processItem` function\n\nAll instances have been successfully updated to use the new API format.",
+      "timestamp": "2025-03-24T12:20:30Z"
+    }
+  ]
+}
+```
+
+**Sample Curl**:
+```bash
+curl -v https://api.cody-batch.example.com/jobs/job-123/repositories/liamzdenek%2Frepo1/claude-thread
+```
+
+## AWS Batch Job
+
+The job processing is handled by AWS Batch jobs. These are not directly accessible via API Gateway but are submitted by the API Lambda.
 
 ### Job Processing Flow
 
 1. **Job Creation**:
    - API Lambda creates a job record in DynamoDB
-   - API Lambda triggers the Worker Lambda
+   - API Lambda submits a job to AWS Batch
 
-2. **Worker Lambda Execution**:
-   - Worker Lambda retrieves job details from DynamoDB
+2. **Batch Job Execution**:
+   - Batch job retrieves job details from DynamoDB
    - For each repository:
      - Clone repository
-     - Analyze code for vulnerabilities
-     - Generate fixes using Claude 3.7
+     - Analyze code based on the prompt
+     - Generate changes using Claude 3.7
      - Create pull request or store diff
      - Update repository status in DynamoDB
    - Update job status in DynamoDB
 
-### Worker Lambda Input Event
+### Batch Job Parameters
 
 ```json
 {
-  "jobId": "job-123"
+  "jobId": "job-123",
+  "maxRepositories": 5
 }
 ```
 
-### Worker Lambda Environment Variables
+### Batch Job Environment Variables
 
-- `GITHUB_APP_ID`: GitHub App ID for authentication
-- `GITHUB_APP_PRIVATE_KEY`: GitHub App private key
+- `GITHUB_TOKEN`: GitHub service account token
 - `CLAUDE_API_KEY`: Claude 3.7 API key
 - `DYNAMODB_JOBS_TABLE`: DynamoDB table for jobs
 - `DYNAMODB_REPOSITORIES_TABLE`: DynamoDB table for repositories
@@ -573,21 +477,15 @@ The Worker Lambda is not directly accessible via API Gateway. It is triggered by
 - `jobId` (String): Unique identifier for the job
 - `name` (String): Job name
 - `description` (String): Job description
-- `type` (String): Job type (e.g., "vulnerability-fix", "dependency-update")
-- `parameters` (Map): Job-specific parameters
+- `type` (String): Job type (e.g., "code-pattern-update", "vulnerability-fix")
+- `prompt` (String): Claude prompt for code analysis
 - `repositories` (List): List of repositories to process
 - `createPullRequests` (Boolean): Whether to create pull requests
 - `status` (String): Job status (pending, in-progress, completed, failed, cancelled)
 - `createdAt` (Number): Timestamp when the job was created
-- `createdBy` (String): GitHub username of the creator
 - `startedAt` (Number): Timestamp when the job started processing
 - `completedAt` (Number): Timestamp when the job completed
 - `error` (String): Error message if the job failed
-
-**Global Secondary Indexes**:
-- `createdBy-createdAt-index`:
-  - Partition Key: `createdBy` (String)
-  - Sort Key: `createdAt` (Number)
 
 ### Repositories Table
 
@@ -602,32 +500,32 @@ The Worker Lambda is not directly accessible via API Gateway. It is triggered by
 - `repositoryName` (String): Repository name (e.g., "liamzdenek/repo1")
 - `status` (String): Repository processing status
 - `pullRequestUrl` (String): URL of the created pull request
+- `wereChangesNecessary` (Boolean): Whether changes were necessary
 - `startedAt` (Number): Timestamp when processing started
 - `completedAt` (Number): Timestamp when processing completed
 - `changes` (List): List of file changes
 - `diff` (String): Full diff of changes
-- `analysisDetails` (Map): Details about the analysis
+- `claudeMessages` (Map): Claude message information
+  - `finalMessage` (String): Final summary message from Claude
+  - `threadId` (String): ID of the message thread
 - `logs` (List): Processing logs
 - `error` (String): Error message if processing failed
 
 ## Claude 3.7 API Integration
 
-### Prompt Template for Vulnerability Fix
+### Prompt Template for Code Updates
 
 ```
-You are an expert software engineer tasked with fixing a security vulnerability in a codebase.
+You are an expert software engineer tasked with updating code according to specific requirements.
 
-VULNERABILITY DETAILS:
-- Type: {vulnerability_type}
-- Description: {vulnerability_description}
-- Fix: {fix_description}
+TASK DESCRIPTION:
+{prompt}
 
 REPOSITORY INFORMATION:
 - Name: {repository_name}
-- Language: {repository_language}
 
-I will provide you with files from the repository that may contain the vulnerability.
-For each file, analyze if it contains the vulnerability and generate a fix if needed.
+I will provide you with files from the repository that may need updates.
+For each file, analyze if it needs changes and generate updated code if necessary.
 
 FILE: {file_path}
 
@@ -637,28 +535,26 @@ FILE: {file_path}
 
 ```
 
-Please analyze this file and determine if it contains the vulnerability.
-If it does, provide a fix that addresses the vulnerability while maintaining compatibility.
-
+Please analyze this file and determine if it needs changes according to the requirements.
 Your response should be in the following format:
 
 ANALYSIS:
-[Your analysis of whether the file contains the vulnerability]
+[Your analysis of whether the file needs changes]
 
-CONTAINS_VULNERABILITY: [YES/NO]
+CHANGES_NECESSARY: [YES/NO]
 
-FIX:
-[If the file contains the vulnerability, provide the complete fixed file content]
+UPDATED_CODE:
+[If changes are necessary, provide the complete updated file content]
 
 EXPLANATION:
-[Explain the changes you made and why they fix the vulnerability]
+[Explain the changes you made and why they address the requirements]
 ```
 
 ### Response Parsing
 
-The Worker Lambda parses Claude's response to extract:
-- Whether the file contains the vulnerability
-- The fixed file content (if applicable)
+The Batch job parses Claude's response to extract:
+- Whether changes are necessary
+- The updated file content (if applicable)
 - The explanation of changes
 
 This information is used to generate diffs and create pull requests.
@@ -678,9 +574,9 @@ git clone https://github.com/{repository_name}.git
 **Request Body**:
 ```json
 {
-  "title": "Fix Log4J vulnerability",
-  "body": "This pull request updates Log4J to version 2.15.0 to address CVE-2021-44228.\n\nChanges were automatically generated by Cody Batch.",
-  "head": "fix/log4j-vulnerability",
+  "title": "Update code patterns",
+  "body": "This pull request updates deprecated API calls to use the new format.\n\nChanges were automatically generated by Cody Batch.",
+  "head": "update/code-patterns",
   "base": "main"
 }
 ```
@@ -692,6 +588,6 @@ git clone https://github.com/{repository_name}.git
   "id": 1,
   "number": 1,
   "state": "open",
-  "title": "Fix Log4J vulnerability",
+  "title": "Update code patterns",
   "html_url": "https://github.com/liamzdenek/repo1/pull/1"
 }

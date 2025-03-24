@@ -12,7 +12,21 @@ We are in the initial planning and setup phase of the Cody Batch project. The pr
 
 ## Recent Changes
 
-As this is the project initialization phase, there are no recent changes to track yet. The memory bank documentation is being created to establish the project foundation.
+Based on feedback, we've made several important architectural adjustments:
+
+1. **AWS Batch Instead of Lambda for Job Processing**: The job processor will use AWS Batch instead of Lambda to handle jobs that may take longer than 15 minutes.
+
+2. **Service Account Authentication**: Removed frontend OAuth flow in favor of a service account approach with credentials passed as environment variables.
+
+3. **Generic Prompting System**: Made the tool generic for any prompt, not just vulnerability detection, using "wereChangesNecessary" instead of "vulnerabilityDetected".
+
+4. **Repository Limit**: Added a limit of 5 repositories per request for cost containment.
+
+5. **Simplified Secrets Management**: Using environment variables instead of AWS Secrets Manager for secrets.
+
+6. **CloudFront Invalidation**: Using BucketDeployment in CDK for automatic invalidation.
+
+7. **Enhanced Result Persistence**: Added support for downloading patch files and viewing Claude message threads.
 
 ## Next Steps
 
@@ -30,18 +44,18 @@ As this is the project initialization phase, there are no recent changes to trac
 
 3. **Set Up CDK Infrastructure**:
    - Define DynamoDB tables
-   - Configure Lambda functions
+   - Configure AWS Batch compute environment and job queue
    - Set up API Gateway
-   - Create S3 bucket for frontend hosting
+   - Create S3 bucket for frontend hosting with BucketDeployment
    - Configure CloudFront distribution
 
 4. **Initialize API Package**:
    - Set up Express application
    - Configure Lambda handler
    - Create basic health check endpoint
-   - Set up GitHub OAuth flow
+   - Set up job management endpoints
 
-5. **Initialize Worker Package**:
+5. **Initialize Batch Job Package**:
    - Create job processing framework
    - Set up GitHub API integration
    - Set up Claude API integration
@@ -51,7 +65,7 @@ As this is the project initialization phase, there are no recent changes to trac
    - Set up React application
    - Configure Tanstack Router
    - Create basic layout and navigation
-   - Implement authentication flow
+   - Implement job creation and monitoring interfaces
 
 ### Short-Term Goals (Next Week)
 
@@ -60,12 +74,14 @@ As this is the project initialization phase, there are no recent changes to trac
    - Basic code analysis
    - Integration with Claude 3.7
    - Pull request creation for owned repositories
+   - Patch file generation and storage
 
 2. **Develop Frontend Features**:
-   - Job creation form
+   - Job creation form with repository limit
    - Job status monitoring
    - Result visualization
-   - Repository selection
+   - Patch file download
+   - Claude message thread viewing
 
 3. **Enhance API Capabilities**:
    - Job management endpoints
@@ -82,7 +98,7 @@ As this is the project initialization phase, there are no recent changes to trac
 ### Medium-Term Goals (Next 2-3 Weeks)
 
 1. **Implement Advanced Features**:
-   - Support for multiple vulnerability types
+   - Support for multiple prompt types
    - Batch job processing
    - Enhanced result visualization
    - Job scheduling
@@ -91,7 +107,7 @@ As this is the project initialization phase, there are no recent changes to trac
    - Improve Claude prompt engineering
    - Optimize GitHub API usage
    - Enhance DynamoDB access patterns
-   - Reduce Lambda cold start impact
+   - Reduce cold start impact
 
 3. **Enhance User Experience**:
    - Improve error messaging
@@ -104,12 +120,12 @@ As this is the project initialization phase, there are no recent changes to trac
 ### Architecture Decisions
 
 1. **Serverless vs. Container-Based**:
-   - **Decision**: Using serverless architecture with AWS Lambda
-   - **Rationale**: Better scalability, lower operational overhead, cost efficiency for bursty workloads
-   - **Considerations**: Need to manage cold starts and execution time limits
+   - **Decision**: Using AWS Batch for job processing and Lambda for API
+   - **Rationale**: AWS Batch can handle longer-running jobs, while Lambda is suitable for API requests
+   - **Considerations**: Need to manage container images and compute environments
 
 2. **Monolithic vs. Microservices**:
-   - **Decision**: Using a microservices approach with separate API and Worker Lambdas
+   - **Decision**: Using a microservices approach with separate API and Batch services
    - **Rationale**: Better separation of concerns, independent scaling, and deployment
    - **Considerations**: Need to manage inter-service communication and consistency
 
@@ -118,32 +134,37 @@ As this is the project initialization phase, there are no recent changes to trac
    - **Rationale**: Serverless, scalable, and consistent performance
    - **Considerations**: Need to design efficient access patterns and manage costs
 
+4. **Authentication Strategy**:
+   - **Decision**: Using a service account with credentials passed as environment variables
+   - **Rationale**: Simplifies authentication flow and aligns with real-world usage
+   - **Considerations**: Need to manage credential security and rotation
+
 ### Technical Considerations
 
 1. **GitHub API Integration**:
    - How to handle rate limiting for large repositories
    - Strategies for efficient repository scanning
-   - Managing OAuth token security and refresh
+   - Managing service account credentials securely
 
 2. **Claude 3.7 Integration**:
    - Prompt engineering for effective code analysis
    - Handling large codebases within token limits
-   - Validating generated fixes for correctness
+   - Storing and displaying message threads
 
 3. **Job Processing**:
-   - Handling long-running jobs within Lambda constraints
+   - Handling long-running jobs with AWS Batch
    - Implementing retry and error recovery mechanisms
    - Managing parallel processing for efficiency
 
 4. **Security Considerations**:
-   - Securing GitHub OAuth tokens
+   - Securing GitHub service account credentials
    - Limiting repository access to specified patterns
    - Protecting against injection attacks in generated code
 
 ### Open Questions
 
 1. **Scope Limitations**:
-   - What specific vulnerability types should be supported initially?
+   - What specific prompt types should be supported initially?
    - How complex should the fix generation logic be?
    - What level of user customization should be supported?
 
