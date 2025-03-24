@@ -1,0 +1,25 @@
+{
+  "name": "cdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS CDK infrastructure for Cody Batch",
+  "main": "main.js",
+  "scripts": {
+    "build": "nx build",
+    "deploy": "cdk deploy --profile lz-demos --require-approval never",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "destroy": "cdk destroy --profile lz-demos"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.126.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.126.0",
+    "@types/node": "^20.11.19"
+  },
+  "peerDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

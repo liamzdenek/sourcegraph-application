@@ -13,10 +13,17 @@
         "platform": "node",
         "outputPath": "dist/packages/cdk",
         "format": ["cjs"],
-        "bundle": false,
+        "bundle": true,
         "main": "packages/cdk/src/main.ts",
         "tsConfig": "packages/cdk/tsconfig.app.json",
-        "assets": ["packages/cdk/src/assets"],
+        "assets": [
+          "packages/cdk/src/assets",
+          {
+            "input": "packages/cdk",
+            "glob": "cdk.json",
+            "output": "."
+          }
+        ],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
@@ -53,6 +60,19 @@
           "buildTarget": "cdk:build:production"
         }
       }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/packages/cdk",
+        "command": "cdk deploy --profile lz-demos --require-approval never"
+      },
+      "dependsOn": [
+        {
+          "target": "build",
+          "projects": "self"
+        }
+      ]
     },
     "test": {
       "options": {

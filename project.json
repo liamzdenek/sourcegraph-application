@@ -1,0 +1,12 @@
+{
+  "name": "cody-batch",
+  "$schema": "node_modules/nx/schemas/project-schema.json",
+  "targets": {
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run cdk:deploy"
+      }
+    }
+  }
+}
