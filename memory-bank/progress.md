@@ -25,6 +25,7 @@ The project is in the **implementation phase**. We have:
 - ✅ Created a test repository for validating Claude client functionality
 - ✅ Implemented the batch package with job and repository processing
 - ✅ Implemented the frontend components with React and Tanstack Router
+- ✅ Created a comprehensive CDK implementation plan
 
 ## Recent Updates
 
@@ -59,6 +60,8 @@ Based on feedback, we've made several important architectural adjustments:
 - ✅ Added CSS modules for component-specific styling
 - ✅ Implemented global CSS variables for consistent styling
 - ✅ Added responsive design for mobile and desktop
+- ✅ Created a comprehensive CDK implementation plan with a single stack approach
+- ✅ Defined NX targets for building and deploying the infrastructure
 
 ## What Works
 
@@ -88,6 +91,7 @@ The following components are now functional:
 - ✅ CSS modules for component-specific styling
 - ✅ Global CSS variables for consistent styling
 - ✅ Responsive design for mobile and desktop
+- ✅ CDK implementation plan with all required resources defined
 
 ## What's Left to Build
 
@@ -101,15 +105,17 @@ The following components are now functional:
 - [x] Set up ESLint dependency checks
 - [ ] Set up testing framework
 
-### Infrastructure (10% Complete)
+### Infrastructure (20% Complete)
 
 - [x] Create CDK package
-- [ ] Define DynamoDB tables
+- [x] Create CDK implementation plan
+- [ ] Implement DynamoDB tables with GSIs
 - [ ] Configure AWS Batch compute environment and job queue
 - [ ] Set up API Gateway
 - [ ] Create S3 bucket for frontend
 - [ ] Configure CloudFront distribution with BucketDeployment
 - [ ] Set up IAM roles and policies
+- [ ] Implement NX targets for building and deploying
 
 ### Shared Package (100% Complete)
 
@@ -194,13 +200,15 @@ The following components are now functional:
 - [x] Create conversation formatting method for storage
 - [x] Implement integration with batch processing
 
-### CDK Package (10% Complete)
+### CDK Package (20% Complete)
 
 - [x] Initialize package structure
-- [ ] Set up AWS CDK stack
-- [ ] Define infrastructure resources
-- [ ] Configure deployment pipeline
-- [ ] Set up environment variables
+- [x] Create CDK implementation plan
+- [ ] Implement single stack for all resources
+- [ ] Configure environment variables
+- [ ] Set up IAM roles and permissions
+- [ ] Implement frontend deployment with environment variable injection
+- [ ] Create NX targets for building and deploying
 
 ### Deployment (0% Complete)
 
@@ -215,16 +223,16 @@ The following components are now functional:
 | Component | Status | Progress |
 |-----------|--------|----------|
 | Project Setup | Completed | 100% |
-| Infrastructure | In Progress | 10% |
+| Infrastructure | In Progress | 20% |
 | Shared Package | Completed | 100% |
 | API Package | Completed | 100% |
 | Batch Package | In Progress | 80% |
 | Frontend Package | In Progress | 90% |
 | GitHub Client | In Progress | 80% |
 | Claude Client | Completed | 100% |
-| CDK Package | In Progress | 10% |
+| CDK Package | In Progress | 20% |
 | Deployment | Not Started | 0% |
-| **Overall** | **In Progress** | **75%** |
+| **Overall** | **In Progress** | **76%** |
 
 ## Known Issues
 
@@ -289,13 +297,23 @@ The following components are now functional:
     - Frontend needs to connect to actual API endpoints
     - Mitigation: Implemented API service layer with error handling
 
+16. **CDK Deployment Profile**:
+    - Need to use the AWS profile "lz-demos" for deployment
+    - Mitigation: Configure CDK to use the specified profile
+
+17. **Environment Variable Injection**:
+    - Frontend needs environment variables injected at build time
+    - Mitigation: Use BucketDeployment with custom bundling to inject variables
+
 ## Next Milestone
 
 **Infrastructure and Deployment (Target: Day 10-14)**
+- Implement CDK stack with all required resources
 - Set up DynamoDB tables with GSIs
 - Configure AWS Batch compute environment and job queue
 - Set up IAM roles and policies
+- Implement frontend deployment with environment variable injection
+- Create NX targets for building and deploying
 - Deploy API and batch services
-- Test end-to-end job processing
 - Connect frontend to actual API endpoints
 - Verify conversation history storage and retrieval

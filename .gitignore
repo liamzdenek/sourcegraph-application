@@ -77,6 +77,5 @@ claude-key.json
 github-token.json
 
 # Memory bank
-memory-bank/
 vite.config.*.timestamp*
 vitest.config.*.timestamp*

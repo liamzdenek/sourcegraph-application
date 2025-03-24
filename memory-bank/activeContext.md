@@ -8,9 +8,10 @@ We are in the implementation phase of the Cody Batch project. The primary focus 
 2. **Claude Client Development**: Building the Claude client for AI code analysis
 3. **Batch Processing Framework**: Implementing the batch processing framework
 4. **Frontend Development**: Implementing the frontend components
-5. **Integration**: Integrating all components
-6. **Testing**: Testing the system
-7. **Infrastructure Setup**: Preparing the AWS infrastructure for deployment
+5. **CDK Infrastructure**: Implementing the AWS CDK infrastructure
+6. **Integration**: Integrating all components
+7. **Testing**: Testing the system
+8. **Deployment**: Preparing for deployment
 
 ## Recent Changes
 
@@ -76,6 +77,15 @@ Based on feedback, we've made several important architectural adjustments:
     - Added CSS modules for component-specific styling
     - Implemented global CSS variables for consistent styling
     - Added responsive design for mobile and desktop
+
+21. **CDK Implementation Plan**: Created a comprehensive plan for implementing the AWS CDK infrastructure:
+    - Single stack approach for simplicity
+    - All required AWS resources defined
+    - Environment variables configured for all components
+    - IAM roles and permissions set up
+    - Frontend deployment with environment variable injection
+    - NX targets for building and deploying the infrastructure
+    - AWS profile "lz-demos" for deployment
 
 ## Next Steps
 
@@ -153,10 +163,14 @@ Based on feedback, we've made several important architectural adjustments:
     - Implement global CSS variables ✅
     - Add responsive design ✅
 
-11. **Initialize CDK Package**: ✅
+11. **Implement CDK Package**:
     - Set up package structure ✅
-    - Define AWS resources
-    - Configure deployment
+    - Create CDK implementation plan ✅
+    - Implement single stack for all resources
+    - Configure environment variables
+    - Set up IAM roles and permissions
+    - Implement frontend deployment with environment variable injection
+    - Create NX targets for building and deploying
 
 ### Short-Term Goals (Next Week)
 
@@ -188,7 +202,7 @@ Based on feedback, we've made several important architectural adjustments:
    - Test Claude message thread viewing with technical and simplified views
 
 5. **Deploy Initial Version**:
-   - Set up AWS resources
+   - Set up AWS resources using CDK
    - Deploy backend services
    - Deploy frontend application
    - Verify end-to-end functionality
@@ -282,6 +296,21 @@ Based on feedback, we've made several important architectural adjustments:
     - **Rationale**: Provides efficient data fetching, caching, and state management
     - **Considerations**: Need to handle loading and error states consistently
 
+14. **CDK Infrastructure**:
+    - **Decision**: Using a single stack for all resources
+    - **Rationale**: Simplifies deployment and resource management
+    - **Considerations**: Need to manage dependencies between resources
+
+15. **Deployment Strategy**:
+    - **Decision**: Using NX targets for building and deploying
+    - **Rationale**: Provides a consistent and repeatable deployment process
+    - **Considerations**: Need to configure dependencies between targets
+
+16. **Environment Variable Management**:
+    - **Decision**: Using CDK parameters for sensitive values
+    - **Rationale**: Avoids hardcoding sensitive values in the codebase
+    - **Considerations**: Need to pass parameters during deployment
+
 ### Technical Considerations
 
 1. **GitHub API Integration**:
@@ -317,6 +346,13 @@ Based on feedback, we've made several important architectural adjustments:
    - Handling large conversation histories efficiently
    - Implementing responsive design for different screen sizes
 
+6. **CDK Infrastructure**:
+   - How to structure the CDK stack for maintainability
+   - Managing environment variables across different environments
+   - Configuring IAM roles with least privilege
+   - Setting up proper networking for AWS Batch
+   - Implementing frontend deployment with environment variable injection
+
 ### Open Questions
 
 1. **Scope Limitations**:
@@ -351,3 +387,10 @@ Based on feedback, we've made several important architectural adjustments:
    - How to test conversation history storage and retrieval
    - How to test the batch processor without AWS Batch
    - How to test the frontend without a backend
+
+6. **Deployment Strategy**:
+   - How to manage environment-specific configurations
+   - How to handle database migrations
+   - How to implement blue-green deployments
+   - How to monitor deployed resources
+   - How to implement rollback procedures
