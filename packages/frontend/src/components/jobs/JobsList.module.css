@@ -1,76 +1,116 @@
-.actionsContainer {
+.jobsList {
+  padding: var(--spacing-lg);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 2rem;
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.filters {
+  background-color: var(--white);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
 }
 
-.filterContainer {
+.filterGroup {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
 }
 
-.jobsTable {
-  width: 100%;
-  overflow-x: auto;
+.filterGroup span {
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-right: var(--spacing-sm);
 }
 
-.jobsTable table {
+.tableContainer {
+  background-color: var(--white);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.table {
   width: 100%;
   border-collapse: collapse;
-  background-color: var(--white);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm);
 }
 
-.jobsTable th,
-.jobsTable td {
+.table th,
+.table td {
   padding: var(--spacing-md);
   text-align: left;
   border-bottom: 1px solid var(--gray-200);
 }
 
-.jobsTable th {
-  background-color: var(--gray-100);
+.table th {
+  background-color: var(--gray-50);
   font-weight: 600;
   color: var(--gray-700);
+  position: sticky;
+  top: 0;
 }
 
-.jobsTable tr:last-child td {
+.table tr:last-child td {
   border-bottom: none;
 }
 
-.jobsTable tr:hover {
+.table tr:hover {
   background-color: var(--gray-50);
 }
 
-.jobName a {
+.table a {
   font-weight: 500;
   color: var(--primary-color);
   text-decoration: none;
 }
 
-.jobName a:hover {
+.table a:hover {
   text-decoration: underline;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  background-color: var(--gray-100);
+}
+
+.sortIcon {
+  margin-left: var(--spacing-xs);
+  display: inline-block;
+  font-weight: bold;
 }
 
 .status {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--border-radius-sm);
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
   font-size: 0.75rem;
   font-weight: 600;
-}
-
-.status::before {
-  content: '';
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  margin-right: 0.5rem;
+  text-transform: capitalize;
 }
 
 .statusPending {
@@ -78,17 +118,9 @@
   background-color: rgba(0, 123, 255, 0.1);
 }
 
-.statusPending::before {
-  background-color: var(--status-pending);
-}
-
 .statusProcessing {
   color: var(--status-processing);
   background-color: rgba(255, 193, 7, 0.1);
-}
-
-.statusProcessing::before {
-  background-color: var(--status-processing);
 }
 
 .statusCompleted {
@@ -96,17 +128,9 @@
   background-color: rgba(40, 167, 69, 0.1);
 }
 
-.statusCompleted::before {
-  background-color: var(--status-completed);
-}
-
 .statusFailed {
   color: var(--status-failed);
   background-color: rgba(220, 53, 69, 0.1);
-}
-
-.statusFailed::before {
-  background-color: var(--status-failed);
 }
 
 .statusCancelled {
@@ -114,11 +138,8 @@
   background-color: rgba(108, 117, 125, 0.1);
 }
 
-.statusCancelled::before {
-  background-color: var(--status-cancelled);
-}
-
 .progressContainer {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -129,10 +150,15 @@
   height: 8px;
   background-color: var(--gray-200);
   border-radius: 4px;
+  position: relative;
   overflow: hidden;
 }
 
-.progressFill {
+.progressBar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
   background-color: var(--primary-color);
   border-radius: 4px;
@@ -145,55 +171,102 @@
   white-space: nowrap;
 }
 
-.actions {
+.actionButtons {
   display: flex;
   gap: var(--spacing-xs);
+  flex-wrap: wrap;
 }
 
-.emptyState {
+.confirmCancel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   background-color: var(--gray-100);
+  padding: 0.25rem 0.5rem;
   border-radius: var(--border-radius-md);
-  padding: var(--spacing-lg);
-  text-align: center;
-  color: var(--gray-600);
 }
 
-.loadingContainer {
+.confirmCancel span {
+  font-size: 0.75rem;
+  color: var(--gray-700);
+  margin-right: var(--spacing-xs);
+}
+
+.loading {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 200px;
+  min-height: 150px;
+  color: var(--gray-600);
 }
 
-.pagination {
+.error {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: var(--danger-color);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.empty {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  margin-top: var(--spacing-xl);
-  gap: var(--spacing-xs);
+  min-height: 150px;
+  padding: var(--spacing-lg);
+  background-color: var(--gray-50);
+  border-radius: var(--border-radius-md);
+  text-align: center;
+}
+
+.empty p {
+  margin-bottom: var(--spacing-md);
+  color: var(--gray-600);
+}
+
+@media (max-width: 992px) {
+  .table {
+    min-width: 800px;
+  }
+  
+  .tableContainer {
+    overflow-x: auto;
+  }
 }
 
 @media (max-width: 768px) {
-  .actionsContainer {
+  .header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-md);
   }
   
-  .jobsTable th:nth-child(2),
-  .jobsTable td:nth-child(2),
-  .jobsTable th:nth-child(5),
-  .jobsTable td:nth-child(5) {
-    display: none;
+  .actions {
+    width: 100%;
   }
   
-  .actions {
-    flex-direction: column;
+  .actions a,
+  .actions button {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .filterGroup {
+    overflow-x: auto;
+    padding-bottom: var(--spacing-xs);
   }
 }
 
 @media (max-width: 576px) {
-  .jobsTable th:nth-child(4),
-  .jobsTable td:nth-child(4) {
-    display: none;
+  .confirmCancel {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--spacing-sm);
+  }
+  
+  .confirmCancel span {
+    margin-bottom: var(--spacing-xs);
+    text-align: center;
   }
 }

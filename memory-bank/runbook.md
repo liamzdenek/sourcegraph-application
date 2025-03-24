@@ -3,16 +3,15 @@
 This runbook provides procedures for common operational tasks and troubleshooting scenarios for the Cody Batch system. It follows the Validate, Triage, Act, Reflect (VTAR) methodology for incident response.
 
 ## Deployment Procedures
-
 ### Initial Deployment
 
 #### Prerequisites
-- AWS CLI configured with appropriate credentials
+- AWS CLI configured with appropriate credentials (profile "lz-demos")
 - Node.js 18+ installed
 - Nx CLI installed globally (`npm install -g nx`)
 - Docker installed and configured
 - GitHub service account token
-- Claude API key obtained
+- Claude API key obtained (optional)
 
 #### Procedure
 1. Clone the repository
@@ -32,7 +31,7 @@ This runbook provides procedures for common operational tasks and troubleshootin
    cat > .env << EOF
    GITHUB_TOKEN=your_github_token
    CLAUDE_API_KEY=your_claude_api_key
-   AWS_REGION=us-east-1
+   AWS_REGION=us-west-2
    ALLOWED_REPOSITORIES=liamzdenek/*
    EOF
    ```
@@ -42,24 +41,87 @@ This runbook provides procedures for common operational tasks and troubleshootin
    nx run-many --target=build --all
    ```
 
-5. Build and push Docker image for batch job
-   ```bash
-   nx run batch:docker-build
-   nx run batch:docker-push
-   ```
-
-6. Deploy infrastructure
+5. Deploy infrastructure
    ```bash
    nx run cdk:deploy
    ```
 
-7. Verify deployment
+6. Verify deployment
    ```bash
    # Check if API is accessible
-   curl https://api-url/health
+   curl https://a1p6i4snfc.execute-api.us-west-2.amazonaws.com/prod/health
    
    # Check if frontend is accessible
-   curl https://frontend-url/
+   curl -I https://drph83xl8iiin.cloudfront.net
+   ```
+
+### Troubleshooting Deployment Issues
+
+#### Common Issues and Solutions
+
+1. **Permission Issues with CDK Build**
+   
+   **Symptoms**: Error messages like "EACCES: permission denied, rmdir 'dist/packages/cdk/cdk.out/asset...'"
+   
+   **Solution**:
+   ```bash
+   # Clean up the CDK output directory
+   rm -rf dist/packages/cdk/cdk.out
+   
+   # Try the deployment again
+   nx run cdk:deploy
+   ```
+
+2. **Manifest.json Not Found Error**
+   
+   **Symptoms**: Error message "ENOENT: no such file or directory, open 'manifest.json'"
+   
+   **Solution**:
+   ```bash
+   # Update the deploy command in packages/cdk/project.json to use:
+   # "command": "cdk deploy --app ./main.js --profile lz-demos --require-approval never"
+   
+   # Then run the deployment again
+   nx run cdk:deploy
+   ```
+
+3. **Missing Environment Variables**
+   
+   **Symptoms**: Warning messages like "Warning: Missing environment variables: CLAUDE_API_KEY"
+   
+   **Solution**:
+   - For optional variables like CLAUDE_API_KEY, this warning can be ignored
+   - For required variables, add them to your environment or .env file
+   ```bash
+   export GITHUB_TOKEN=your_github_token
+   ```
+
+4. **API Gateway Errors**
+   
+   **Symptoms**: 5XX errors from API Gateway
+   
+   **Solution**:
+   ```bash
+   # Check API Lambda logs
+   aws logs get-log-events --log-group-name /aws/lambda/CodyBatchStack-ApiLambda --log-stream-name $(aws logs describe-log-streams --log-group-name /aws/lambda/CodyBatchStack-ApiLambda --order-by LastEventTime --descending --limit 1 --query 'logStreams[0].logStreamName' --output text) --profile lz-demos
+   
+   # Redeploy API if needed
+   nx run api:build
+   nx run cdk:deploy
+   ```
+
+5. **CloudFront Distribution Not Accessible**
+   
+   **Symptoms**: Unable to access the frontend
+   
+   **Solution**:
+   ```bash
+   # Check CloudFront distribution status
+   aws cloudfront get-distribution --id $(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" --output text) --profile lz-demos
+   
+   # Create invalidation if needed
+   aws cloudfront create-invalidation --distribution-id $(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" --output text) --paths "/*" --profile lz-demos
+   ```
    ```
 
 ### Frontend Updates

@@ -1,16 +1,17 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
-import { BatchClient } from '@aws-sdk/client-batch';
+import serverless from 'serverless-http';
 
-// Import routes with .js extension (compiled output will be JavaScript)
-import healthRoutes from './routes/health.js';
-import repositoryRoutes from './routes/repositories.js';
-import jobRoutes from './routes/jobs.js';
+// Import AWS clients
+import { dynamoDbDocClient, batchClient } from './lib/aws-clients';
+
+// Import routes
+import healthRoutes from './routes/health';
+import repositoryRoutes from './routes/repositories';
+import jobRoutes from './routes/jobs';
 
 // Load environment variables
 dotenv.config();
@@ -23,36 +24,33 @@ function validateEnvironment() {
     'DYNAMODB_REPOSITORIES_TABLE',
     'AWS_BATCH_JOB_QUEUE',
     'AWS_BATCH_JOB_DEFINITION',
-    'GITHUB_TOKEN',
+    'GITHUB_TOKEN'
+  ];
+  
+  // Optional vars that we'll warn about but not fail
+  const optionalVars = [
     'CLAUDE_API_KEY'
   ];
   
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  const missingRequiredVars = requiredVars.filter(varName => !process.env[varName]);
+  const missingOptionalVars = optionalVars.filter(varName => !process.env[varName]);
   
-  if (missingVars.length > 0) {
-    console.warn(`Warning: Missing environment variables: ${missingVars.join(', ')}`);
+  if (missingOptionalVars.length > 0) {
+    console.warn(`Warning: Missing optional environment variables: ${missingOptionalVars.join(', ')}`);
+  }
+  
+  if (missingRequiredVars.length > 0) {
+    console.warn(`Warning: Missing required environment variables: ${missingRequiredVars.join(', ')}`);
     
-    // In production, we want to fail if environment variables are missing
-    if (process.env.NODE_ENV === 'production' && missingVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+    // In production, we want to fail if required environment variables are missing
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Missing required environment variables: ${missingRequiredVars.join(', ')}`);
     }
   }
 }
 
 // Validate environment variables
 validateEnvironment();
-
-// Initialize AWS clients
-const dynamoDbClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-  endpoint: process.env.DYNAMODB_ENDPOINT // For local development
-});
-
-const dynamoDbDocClient = DynamoDBDocumentClient.from(dynamoDbClient);
-
-const batchClient = new BatchClient({
-  region: process.env.AWS_REGION || 'us-east-1'
-});
 
 // Create Express app
 const app = express();
@@ -63,20 +61,13 @@ app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 
-// Add AWS clients to request object
-app.use((req: Request, res: Response, next: NextFunction) => {
-  req.dynamoDb = dynamoDbDocClient;
-  req.batchClient = batchClient;
-  next();
-});
-
 // Routes
 app.use('/health', healthRoutes);
 app.use('/repositories', repositoryRoutes);
 app.use('/jobs', jobRoutes);
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
   res.status(err.statusCode || 500).json({
     error: {
@@ -101,76 +92,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // For AWS Lambda
-export const handler = async (event: any, context: any) => {
-  // Create a promise that will resolve with the response
-  return new Promise((resolve, reject) => {
-    // Create mock request and response objects
-    const req: any = {
-      method: event.httpMethod,
-      path: event.path,
-      headers: event.headers,
-      body: event.body ? JSON.parse(event.body) : {},
-      query: event.queryStringParameters || {},
-      params: event.pathParameters || {},
-      dynamoDb: dynamoDbDocClient,
-      batchClient: batchClient
-    };
-
-    const res: any = {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: '',
-      status: function(code: number) {
-        this.statusCode = code;
-        return this;
-      },
-      json: function(data: any) {
-        this.body = JSON.stringify(data);
-        resolve({
-          statusCode: this.statusCode,
-          headers: this.headers,
-          body: this.body,
-        });
-      },
-      send: function(data: any) {
-        this.body = typeof data === 'string' ? data : JSON.stringify(data);
-        resolve({
-          statusCode: this.statusCode,
-          headers: this.headers,
-          body: this.body,
-        });
-      },
-      setHeader: function(name: string, value: string) {
-        this.headers[name] = value;
-        return this;
-      }
-    };
-
-    // Process the request through Express
-    app(req, res, (err: any) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({
-          statusCode: 404,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ error: 'Not Found' }),
-        });
-      }
-    });
-  });
-};
-
-// Add type definitions for Express request
-declare global {
-  namespace Express {
-    interface Request {
-      dynamoDb: DynamoDBDocumentClient;
-      batchClient: BatchClient;
-    }
-  }
-}
+export const handler = serverless(app);

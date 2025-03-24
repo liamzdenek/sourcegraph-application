@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/api/src",
   "projectType": "application",
-  "tags": [],
+  "tags": ["scope:api", "type:app"],
   "targets": {
     "build": {
       "executor": "@nx/esbuild:esbuild",
@@ -12,17 +12,26 @@
       "options": {
         "platform": "node",
         "outputPath": "dist/packages/api",
-        "format": ["esm"],
-        "bundle": false,
+        "format": ["cjs"],
+        "bundle": true,
         "main": "packages/api/src/main.ts",
         "tsConfig": "packages/api/tsconfig.app.json",
-        "assets": ["packages/api/src/assets"],
+        "assets": [
+          "packages/api/src/assets",
+          {
+            "glob": ".env.*",
+            "input": "packages/api",
+            "output": "."
+          }
+        ],
         "generatePackageJson": true,
         "esbuildOptions": {
           "sourcemap": true,
           "outExtension": {
             ".js": ".js"
-          }
+          },
+          "external": [],
+          "packages": "bundle"
         }
       },
       "configurations": {

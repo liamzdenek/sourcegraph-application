@@ -1,3 +1,111 @@
+.createJob {
+  padding: var(--spacing-lg);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.formSection {
+  background-color: var(--white);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+}
+
+.formSection h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--gray-200);
+  color: var(--gray-800);
+  font-size: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: var(--spacing-lg);
+}
+
+.formGroup:last-child {
+  margin-bottom: 0;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.formGroup input[type="text"],
+.formGroup textarea,
+.formGroup select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius-md);
+  font-size: 1rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.formGroup input[type="text"]:focus,
+.formGroup textarea:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.formGroup textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.error {
+  border-color: var(--danger-color) !important;
+}
+
+.errorMessage {
+  color: var(--danger-color);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-xs);
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.checkboxGroup input[type="checkbox"] {
+  margin-right: var(--spacing-sm);
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.helpText {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  margin-top: var(--spacing-xs);
+}
+
 .promptHelp {
   margin-top: var(--spacing-sm);
   padding: var(--spacing-md);
@@ -15,24 +123,113 @@
   margin-bottom: 0;
 }
 
-.repositoriesSelect {
-  min-height: 200px;
+.repositoriesContainer {
+  margin-top: var(--spacing-md);
 }
 
-.selectHelp {
-  margin-top: var(--spacing-xs);
-  font-size: 0.75rem;
+.repositories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius-md);
+  background-color: var(--gray-50);
+}
+
+.repository {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md);
+  background-color: var(--white);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.repository:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.selected {
+  border-left: 4px solid var(--primary-color);
+  background-color: var(--primary-color-light);
+}
+
+.checkbox {
+  margin-right: var(--spacing-md);
+}
+
+.checkbox input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.repoInfo {
+  flex: 1;
+}
+
+.repoName {
+  font-weight: 500;
+  color: var(--gray-800);
+  margin-bottom: var(--spacing-xs);
+}
+
+.repoDescription {
+  font-size: 0.875rem;
   color: var(--gray-600);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 150px;
+  color: var(--gray-600);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  padding: var(--spacing-lg);
+  background-color: var(--gray-50);
+  border-radius: var(--border-radius-md);
+  text-align: center;
 }
 
 .formActions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   margin-top: var(--spacing-lg);
+  justify-content: flex-end;
 }
 
-@media (max-width: 576px) {
+.formActions button {
+  min-width: 120px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+  
   .formActions {
     flex-direction: column;
+    width: 100%;
+  }
+  
+  .formActions button,
+  .formActions a {
+    width: 100%;
+    text-align: center;
   }
 }

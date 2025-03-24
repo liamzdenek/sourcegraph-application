@@ -181,55 +181,25 @@ export class CodyBatchStack extends cdk.Stack {
     console.log(`API path: ${apiPath}`);
     console.log(`API path exists: ${fs.existsSync(apiPath)}`);
 
+    // Create Lambda function with bundling
     const apiLambda = new lambda.Function(this, 'ApiLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-        exports.handler = async function(event, context) {
-          // Add CORS headers to all responses
-          const headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-            'Access-Control-Allow-Methods': 'OPTIONS,GET,POST,PUT,DELETE',
-            'Content-Type': 'application/json'
-          };
-
-          // Handle OPTIONS requests for CORS preflight
-          if (event.httpMethod === 'OPTIONS') {
-            return {
-              statusCode: 200,
-              headers: headers,
-              body: JSON.stringify({})
-            };
-          }
-
-          // Handle health check endpoint
-          if (event.path === '/health') {
-            return {
-              statusCode: 200,
-              headers: headers,
-              body: JSON.stringify({
-                status: 'healthy',
-                timestamp: new Date().toISOString()
-              })
-            };
-          }
-
-          // Default response for other endpoints
-          return {
-            statusCode: 200,
-            headers: headers,
-            body: JSON.stringify({
-              message: 'Hello from Cody Batch API',
-              tables: {
-                jobs: process.env.DYNAMODB_JOBS_TABLE,
-                repositories: process.env.DYNAMODB_REPOSITORIES_TABLE
-              },
-              event: event
-            })
-          };
-        }
-      `),
+      handler: 'main.handler',
+      code: lambda.Code.fromAsset(apiPath, {
+        bundling: {
+          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
+          user: 'root',
+          command: [
+            'bash', '-c', [
+              'mkdir -p /tmp/build',
+              'cp -r /asset-input/* /tmp/build/',
+              'cd /tmp/build',
+              'npm install --production',
+              'cp -r /tmp/build/* /asset-output/'
+            ].join(' && ')
+          ],
+        },
+      }),
       timeout: cdk.Duration.seconds(30),
       memorySize: 1024,
       environment: {
@@ -292,16 +262,16 @@ export class CodyBatchStack extends cdk.Stack {
       ],
     });
 
-    // Check if the frontend build exists
+    // Get the frontend build path
     const frontendPath = path.join(gitRootDir, 'dist', 'packages', 'frontend');
-    const frontendExists = fs.existsSync(frontendPath);
     console.log(`Frontend path: ${frontendPath}`);
+    
+    // Log whether the frontend build exists
+    const frontendExists = fs.existsSync(frontendPath);
     console.log(`Frontend path exists: ${frontendExists}`);
-
-    // Throw an error if the frontend build doesn't exist
-    if (!frontendExists) {
-      throw new Error(`Frontend build not found at ${frontendPath}. Please run 'VITE_API_BASE_URL=<api_url> npx nx build frontend' first.`);
-    }
+    
+    // No need to throw an error if the frontend build doesn't exist
+    // since we've made it a prerequisite in the deploy target
 
     // Deploy the frontend
     new s3deploy.BucketDeployment(this, 'DeployWebsite', {

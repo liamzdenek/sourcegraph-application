@@ -25,6 +25,7 @@
           }
         ],
         "generatePackageJson": true,
+        "skipNxCache": true,
         "esbuildOptions": {
           "sourcemap": true,
           "outExtension": {
@@ -64,18 +65,42 @@
     "build-frontend": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "API_URL=$(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --region us-west-2 --query \"Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue\" --output text) && VITE_API_BASE_URL=$API_URL npx nx build frontend"
+        "command": "API_URL=$(aws cloudformation describe-stacks --stack-name CodyBatchStack --profile lz-demos --query \"Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue\" --output text 2>/dev/null || echo \"http://localhost:3333/api\") && echo \"Building frontend with API URL: $API_URL\" && VITE_API_BASE_URL=$API_URL npx nx build frontend"
+      }
+    },
+    "build-api": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx nx build api"
+      }
+    },
+    "build-batch": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx nx build batch"
       }
     },
     "deploy": {
       "executor": "nx:run-commands",
       "options": {
         "cwd": "dist/packages/cdk",
-        "command": "cdk deploy --profile lz-demos --require-approval never"
+        "command": "cdk deploy --app ./main.js --profile lz-demos --require-approval never"
       },
       "dependsOn": [
         {
           "target": "build",
+          "projects": "self"
+        },
+        {
+          "target": "build-api",
+          "projects": "self"
+        },
+        {
+          "target": "build-batch",
+          "projects": "self"
+        },
+        {
+          "target": "build-frontend",
           "projects": "self"
         }
       ]

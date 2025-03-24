@@ -2,8 +2,19 @@
   "name": "api",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "main": "./index.js",
   "types": "./index.d.ts",
-  "dependencies": {}
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.3.1",
+    "serverless-http": "^3.2.0",
+    "zod": "^3.22.4",
+    "@aws-sdk/client-dynamodb": "^3.496.0",
+    "@aws-sdk/lib-dynamodb": "^3.496.0",
+    "@aws-sdk/client-batch": "^3.496.0"
+  }
 }

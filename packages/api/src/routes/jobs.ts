@@ -1,14 +1,14 @@
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
-import { BatchClient, SubmitJobCommand } from '@aws-sdk/client-batch';
-import { 
-  DynamoDBDocumentClient, 
-  PutCommand, 
-  GetCommand, 
-  QueryCommand, 
+import { SubmitJobCommand } from '@aws-sdk/client-batch';
+import {
+  PutCommand,
+  GetCommand,
+  QueryCommand,
   UpdateCommand,
   ScanCommand
 } from '@aws-sdk/lib-dynamodb';
+import { dynamoDbDocClient, batchClient } from '../lib/aws-clients';
 
 const router = express.Router();
 
@@ -60,14 +60,14 @@ router.post('/', async (req: Request, res: Response) => {
     const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
     // Store job in DynamoDB
-    await req.dynamoDb.send(new PutCommand({
+    await dynamoDbDocClient.send(new PutCommand({
       TableName: jobsTable,
       Item: job
     }));
     
     // Create repository records
     for (const repositoryName of jobData.repositories) {
-      await req.dynamoDb.send(new PutCommand({
+      await dynamoDbDocClient.send(new PutCommand({
         TableName: reposTable,
         Item: {
           jobId,
@@ -80,7 +80,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
     
     // Submit job to AWS Batch
-    await submitBatchJob(req.batchClient, jobId);
+    await submitBatchJob(batchClient, jobId);
     
     res.status(201).json(job);
   } catch (error) {
@@ -117,10 +117,9 @@ router.get('/', async (req: Request, res: Response) => {
     const jobsTable = process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs';
     
     let jobs = [];
-    
     if (status) {
       // Query jobs by status using GSI
-      const result = await req.dynamoDb.send(new QueryCommand({
+      const result = await dynamoDbDocClient.send(new QueryCommand({
         TableName: jobsTable,
         IndexName: 'status-createdAt-index',
         KeyConditionExpression: '#status = :status',
@@ -136,11 +135,12 @@ router.get('/', async (req: Request, res: Response) => {
       jobs = result.Items || [];
     } else {
       // Scan all jobs (in production, we would use pagination tokens)
-      const result = await req.dynamoDb.send(new ScanCommand({
+      const result = await dynamoDbDocClient.send(new ScanCommand({
         TableName: jobsTable,
         Limit: 100 // Limit to 100 jobs for performance
       }));
       
+      jobs = result.Items || [];
       jobs = result.Items || [];
       
       // Sort by createdAt in descending order
@@ -208,7 +208,7 @@ router.get('/:jobId', async (req: Request, res: Response) => {
     const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
     // Get job from DynamoDB
-    const jobResult = await req.dynamoDb.send(new GetCommand({
+    const jobResult = await dynamoDbDocClient.send(new GetCommand({
       TableName: jobsTable,
       Key: { jobId }
     }));
@@ -224,7 +224,7 @@ router.get('/:jobId', async (req: Request, res: Response) => {
     const job = jobResult.Item;
     
     // Get repositories for job
-    const reposResult = await req.dynamoDb.send(new QueryCommand({
+    const reposResult = await dynamoDbDocClient.send(new QueryCommand({
       TableName: reposTable,
       KeyConditionExpression: 'jobId = :jobId',
       ExpressionAttributeValues: {
@@ -280,7 +280,7 @@ router.post('/:jobId/cancel', async (req: Request, res: Response) => {
     const jobsTable = process.env.DYNAMODB_JOBS_TABLE || 'cody-batch-dev-jobs';
     
     // Check if job exists
-    const jobResult = await req.dynamoDb.send(new GetCommand({
+    const jobResult = await dynamoDbDocClient.send(new GetCommand({
       TableName: jobsTable,
       Key: { jobId }
     }));
@@ -306,7 +306,7 @@ router.post('/:jobId/cancel', async (req: Request, res: Response) => {
     
     // Update job status to cancelled
     const cancelledAt = new Date().toISOString();
-    await req.dynamoDb.send(new UpdateCommand({
+    await dynamoDbDocClient.send(new UpdateCommand({
       TableName: jobsTable,
       Key: { jobId },
       UpdateExpression: 'SET #status = :status, cancelledAt = :cancelledAt, updatedAt = :updatedAt',
@@ -352,7 +352,7 @@ router.get('/:jobId/repositories/:repoName', async (req: Request, res: Response)
     const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
     // Get repository from DynamoDB
-    const repoResult = await req.dynamoDb.send(new GetCommand({
+    const repoResult = await dynamoDbDocClient.send(new GetCommand({
       TableName: reposTable,
       Key: { jobId, repositoryName }
     }));
@@ -410,7 +410,7 @@ router.get('/:jobId/repositories/:repoName/diff', async (req: Request, res: Resp
     const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
     // Get repository from DynamoDB
-    const repoResult = await req.dynamoDb.send(new GetCommand({
+    const repoResult = await dynamoDbDocClient.send(new GetCommand({
       TableName: reposTable,
       Key: { jobId, repositoryName }
     }));
@@ -463,7 +463,7 @@ router.get('/:jobId/repositories/:repoName/claude-thread', async (req: Request, 
     const reposTable = process.env.DYNAMODB_REPOSITORIES_TABLE || 'cody-batch-dev-repositories';
     
     // Get repository from DynamoDB
-    const repoResult = await req.dynamoDb.send(new GetCommand({
+    const repoResult = await dynamoDbDocClient.send(new GetCommand({
       TableName: reposTable,
       Key: { jobId, repositoryName }
     }));
@@ -540,7 +540,7 @@ router.get('/:jobId/repositories/:repoName/claude-thread', async (req: Request, 
 /**
  * Submit job to AWS Batch
  */
-async function submitBatchJob(batchClient: BatchClient, jobId: string): Promise<void> {
+async function submitBatchJob(batchClient: any, jobId: string): Promise<void> {
   try {
     console.log(`Submitting job ${jobId} to AWS Batch`);
     

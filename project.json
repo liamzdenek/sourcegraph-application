@@ -4,6 +4,7 @@
   "targets": {
     "deploy": {
       "executor": "nx:run-commands",
+      "description": "Build the frontend with the correct API URL and deploy the CDK stack",
       "options": {
         "command": "nx run cdk:deploy"
       }

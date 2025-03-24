@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
+import { QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { dynamoDbDocClient } from '../lib/aws-clients';
 
 const router = express.Router();
 
@@ -20,22 +22,48 @@ router.get('/', async (req: Request, res: Response) => {
     // Validate query parameters
     const { page, perPage, filter } = listRepositoriesSchema.parse(req.query);
     
-    // This would normally fetch repositories from GitHub API
-    // For now, we'll return mock data
-    const repositories = getMockRepositories(filter);
+    // Query DynamoDB for repositories
+    const params = {
+      TableName: process.env.DYNAMODB_REPOSITORIES_TABLE,
+      KeyConditionExpression: 'jobId = :jobId',
+      ExpressionAttributeValues: {
+        ':jobId': 'available-repositories'
+      }
+    };
+
+    const result = await dynamoDbDocClient.send(new QueryCommand(params));
+    
+    // Format repositories for response
+    let repositories = result.Items || [];
+    
+    // Filter repositories if filter parameter is provided
+    if (filter) {
+      repositories = repositories.filter(repo => 
+        repo.repositoryName.toLowerCase().includes(filter.toLowerCase()) || 
+        (repo.description && repo.description.toLowerCase().includes(filter.toLowerCase()))
+      );
+    }
+    
+    // Format repositories for response
+    const formattedRepositories = repositories.map(repo => ({
+      id: repo.id,
+      name: repo.repositoryName,
+      description: repo.description || '',
+      url: repo.url
+    }));
     
     // Paginate results
     const startIndex = (page - 1) * perPage;
     const endIndex = startIndex + perPage;
-    const paginatedRepositories = repositories.slice(startIndex, endIndex);
+    const paginatedRepositories = formattedRepositories.slice(startIndex, endIndex);
     
     res.json({
       repositories: paginatedRepositories,
       pagination: {
         page,
         perPage,
-        total: repositories.length,
-        totalPages: Math.ceil(repositories.length / perPage)
+        total: formattedRepositories.length,
+        totalPages: Math.ceil(formattedRepositories.length / perPage)
       }
     });
   } catch (error) {
@@ -57,52 +85,5 @@ router.get('/', async (req: Request, res: Response) => {
     });
   }
 });
-
-/**
- * Get mock repositories for development
- */
-function getMockRepositories(filter?: string): any[] {
-  const repositories = [
-    {
-      id: 'repo1',
-      name: 'liamzdenek/repo1',
-      description: 'Repository description',
-      url: 'https://github.com/liamzdenek/repo1'
-    },
-    {
-      id: 'repo2',
-      name: 'liamzdenek/repo2',
-      description: 'Another repository',
-      url: 'https://github.com/liamzdenek/repo2'
-    },
-    {
-      id: 'repo3',
-      name: 'liamzdenek/repo3',
-      description: 'Third repository',
-      url: 'https://github.com/liamzdenek/repo3'
-    },
-    {
-      id: 'repo4',
-      name: 'liamzdenek/repo4',
-      description: 'Fourth repository',
-      url: 'https://github.com/liamzdenek/repo4'
-    },
-    {
-      id: 'repo5',
-      name: 'liamzdenek/repo5',
-      description: 'Fifth repository',
-      url: 'https://github.com/liamzdenek/repo5'
-    }
-  ];
-  
-  if (filter) {
-    return repositories.filter(repo => 
-      repo.name.toLowerCase().includes(filter.toLowerCase()) || 
-      repo.description.toLowerCase().includes(filter.toLowerCase())
-    );
-  }
-  
-  return repositories;
-}
 
 export default router;

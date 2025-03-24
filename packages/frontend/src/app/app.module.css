@@ -34,35 +34,69 @@
   border-radius: var(--border-radius-md);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition: all var(--transition-fast);
   border: none;
+  text-decoration: none;
 }
 
-.buttonPrimary {
+.button:hover {
+  text-decoration: none;
+}
+
+.primary {
   background-color: var(--primary-color);
   color: var(--white);
 }
 
-.buttonPrimary:hover {
+.primary:hover {
   background-color: var(--primary-hover);
+  color: var(--white);
 }
 
-.buttonSecondary {
+.secondary {
   background-color: var(--gray-200);
   color: var(--gray-800);
 }
 
-.buttonSecondary:hover {
+.secondary:hover {
   background-color: var(--gray-300);
+  color: var(--gray-800);
 }
 
-.buttonDanger {
+.danger {
   background-color: var(--danger-color);
   color: var(--white);
 }
 
-.buttonDanger:hover {
+.danger:hover {
   background-color: #c82333;
+  color: var(--white);
+}
+
+.text {
+  background-color: transparent;
+  color: var(--primary-color);
+  padding: 0.5rem;
+}
+
+.text:hover {
+  background-color: rgba(0, 123, 255, 0.1);
+  color: var(--primary-hover);
+}
+
+.small {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.active {
+  background-color: var(--primary-color);
+  color: var(--white);
+}
+
+.active:hover {
+  background-color: var(--primary-hover);
+  color: var(--white);
 }
 
 .form {

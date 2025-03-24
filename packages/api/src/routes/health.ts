@@ -19,7 +19,8 @@ router.get('/', async (req: Request, res: Response) => {
     const claudeStatus = 'healthy';
     
     res.json({
-      status: 'healthy',
+      status: 'ok',
+      message: 'API is healthy',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       dependencies: {
@@ -31,7 +32,8 @@ router.get('/', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(500).json({
-      status: 'unhealthy',
+      status: 'error',
+      message: 'Health check failed',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       error: error.message
