@@ -23,7 +23,7 @@
 
 ## 3. Technical Architecture & Implementation (1 minute) 
 1. Front end. React/Vite, S3, Cloudfront
-2. Back end. Lambda. API Gateway
+2. Back end. Express. Lambda. API Gateway
 3. Persistence. DynamoDB for storing Repositories and Jobs
 4. Report. AWS Batch.
 5. Claude API
@@ -42,5 +42,5 @@
    2. I want to work in a high-leverage environment, where the company understands that $100+/engineer/day is inevitable
    3. Finally, I believe I can accomplish my major learning goal at Sourcegraph while delivering exceptional impact. (improve my product oriented-thinking)
 
-3. I'm excited about the possibility of joining Sourcegraph and contributing to your mission of helping people achieve financial independence.
+3. I'm excited about the possibility of joining Sourcegraph and contributing to your vision of Agent Clusters and Fleets.
 4. Thank you for your consideration. I look forward to hearing back
